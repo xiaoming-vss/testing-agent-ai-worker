@@ -1,0 +1,1 @@
+"""Platform-facing protocol adapters."""

@@ -1,0 +1,30 @@
+[worker]
+worker_id = "nanobot-worker-01"
+poll_interval_seconds = 5
+heartbeat_interval_seconds = 15
+run_once = false
+
+[platform]
+base_url = "http://127.0.0.1:9000"
+worker_token = "ui-worker-local-key"
+task_claim_path = "/internal/ai-worker/tasks/claim"
+task_snapshot_path = "/internal/ai-worker/tasks/{task_id}/snapshot"
+task_started_path = "/internal/ai-worker/tasks/{task_id}/started"
+task_heartbeat_path = "/internal/ai-worker/tasks/{task_id}/heartbeat"
+task_progress_path = "/internal/ai-worker/tasks/{task_id}/progress"
+task_completed_path = "/internal/ai-worker/tasks/{task_id}/completed"
+task_llm_credentials_path = "/internal/ai-worker/tasks/{task_id}/llm-credentials"
+project_skills_path = "/internal/ai-worker/projects/{project_id}/skills"
+request_timeout_seconds = 60
+
+[nanobot]
+runtime_root = "D:\\ChromeDownloads\\nanobot-data"
+llm_timeout_seconds = 900
+provider_request_timeout_seconds = 300
+
+[logging]
+level = "INFO"
+console = true
+dir = "logs"
+filename = "worker.log"
+retention_days = 7

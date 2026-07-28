@@ -1,0 +1,20 @@
+[project]
+name = "testing-agent-ai-worker"
+version = "0.1.0"
+description = "Testing agent worker for platform-driven API and functional test generation."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "nanobot-ai",
+    "httpx",
+    "pydantic",
+]
+
+[project.scripts]
+testing-agent-ai-demo = "testing_agent_ai_worker.cli.nanobot_demo:main"
+testing-agent-ai-chain-demo = "testing_agent_ai_worker.cli.nanobot_chain_demo:main"
+testing-agent-ai-worker = "testing_agent_ai_worker.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
