@@ -14,8 +14,6 @@ testing agent platform.
 ## Current structure
 
 ```text
-docs/superpowers/specs/
-docs/superpowers/plans/
 src/testing_agent_ai_worker/app/
 src/testing_agent_ai_worker/tasks/
 src/testing_agent_ai_worker/worker/
