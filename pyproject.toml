@@ -8,6 +8,7 @@ dependencies = [
     "nanobot-ai",
     "httpx",
     "pydantic",
+    "pyyaml",
 ]
 
 [project.scripts]

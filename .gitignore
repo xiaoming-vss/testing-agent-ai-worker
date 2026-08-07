@@ -8,15 +8,10 @@ __pycache__/
 logs/
 demos/
 runtime/
+.codex-remote-dev/
 
 .trellis/.backup-*/
 .trellis/workspace/
 
 .env
 .env.*
-
-.agents/
-.codex/
-AGENTS.md
-PRD.md
-docs/superpowers/

@@ -13,6 +13,7 @@ from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_p
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
 from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import run_skill_step
+from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.worker.runner import TaskExecutor
 
 
@@ -144,20 +145,15 @@ class TestReportNanobotExecutor(TaskExecutor):
         report_text: str,
         error_message: str | None,
     ) -> str:
-        summary = {
-            "taskId": task.task_id,
-            "runId": task.run_id,
-            "generateTaskId": task.generate_task_id,
-            "taskType": task.task_type,
-            "status": status.value if isinstance(status, TaskStatus) else status,
-            "projectId": task.project_id,
-            "sprintId": task.sprint_id,
-            "requirementId": task.requirement_id,
-            "dailyMetricsKeys": sorted(daily_metrics.keys()),
-            "reportLength": len(report_text),
-            "errorMessage": error_message or "",
-        }
-        return json.dumps(summary, ensure_ascii=False)
+        return build_task_result_summary(
+            task=task,
+            status=status,
+            error_message=error_message,
+            details={
+                "dailyMetricsKeys": sorted(daily_metrics.keys()),
+                "reportLength": len(report_text),
+            },
+        )
 
     def _sync_project_skills(self, task: Task, workspace) -> None:
         if self.skill_syncer is not None:

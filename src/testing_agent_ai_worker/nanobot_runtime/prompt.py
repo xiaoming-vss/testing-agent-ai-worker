@@ -4,12 +4,20 @@ JSON_ONLY_INSTRUCTION = "请直接返回 JSON 内容，不要返回 Markdown 代
 FUNCTIONAL_ANALYSIS_JSON_ONLY_INSTRUCTION = (
     "请直接返回符合 solution-test-point-analyzer skill 要求的测试点分析 JSON，"
     "不要返回详细测试用例、cases/testCases、meta/config 包装结构，"
-    "不要返回 Markdown 代码块、解释文字或其他说明。"
+    "输出必须是且只能是一个可由 JSON.parse 直接解析的合法 JSON 对象："
+    "第一个字符必须是 {，最后一个字符必须是 }；"
+    "不得在对象前后输出空行、解释、标题、注释、Markdown 代码块或第二个 JSON 对象。"
 )
 FUNCTIONAL_CASE_NAMES_JSON_ONLY_INSTRUCTION = (
     "请直接返回符合 test-case-name-extractor skill 要求的测试用例名称 JSON，"
     "不要返回详细测试步骤、cases/testCases、meta/config 包装结构，"
     "不要返回 Markdown 代码块、解释文字或其他说明。"
+)
+FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION = (
+    "请直接返回包含 cases 数组的详细测试用例 JSON。"
+    "输出必须是且只能是一个可由 JSON.parse 直接解析的合法 JSON 对象："
+    "第一个字符必须是 {，最后一个字符必须是 }；"
+    "不得在对象前后输出空行、解释、标题、注释、Markdown 代码块或第二个 JSON 对象。"
 )
 API_EXTRACTOR_JSON_ONLY_INSTRUCTION = (
     "请直接返回符合 openapi-test-config-extractor skill 要求的接口配置 JSON，"

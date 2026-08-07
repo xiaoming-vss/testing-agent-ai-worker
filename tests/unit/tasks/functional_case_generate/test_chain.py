@@ -13,7 +13,7 @@ if str(SRC_DIR) not in sys.path:
 from testing_agent_ai_worker.nanobot_runtime.prompt import (
     FUNCTIONAL_ANALYSIS_JSON_ONLY_INSTRUCTION,
     FUNCTIONAL_CASE_NAMES_JSON_ONLY_INSTRUCTION,
-    JSON_ONLY_INSTRUCTION,
+    FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION,
 )
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import (
     run_functional_chain,
@@ -88,7 +88,7 @@ class FunctionalChainPromptTests(unittest.TestCase):
         self.assertIn("请先加载本地 skill：test-case-name-extractor", case_names_message)
         self.assertIn(FUNCTIONAL_CASE_NAMES_JSON_ONLY_INSTRUCTION, case_names_message)
         self.assertIn("请先加载本地 skill：detailed-test-case-generator", detailed_cases_message)
-        self.assertIn(JSON_ONLY_INSTRUCTION, detailed_cases_message)
+        self.assertIn(FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION, detailed_cases_message)
 
     def test_run_skill_step_appends_instruction_by_functional_skill_name(self) -> None:
         bot = _FakeBot()

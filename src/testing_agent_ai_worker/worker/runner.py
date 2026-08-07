@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -19,6 +20,9 @@ from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, T
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.services.result_service import ResultService
 from testing_agent_ai_worker.worker.lifecycle import WorkerLifecycle
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class TaskExecutor:
@@ -64,7 +68,15 @@ class WorkerRunner:
         def submit_progress(progress: TaskProgress) -> None:
             nonlocal latest_progress
             latest_progress = progress
-            self.result_service.submit_progress(progress)
+            try:
+                self.result_service.submit_progress(progress)
+            except Exception:
+                LOGGER.warning(
+                    "progress submission failed: task_id=%s stage=%s",
+                    progress.task_id,
+                    progress.current_stage,
+                    exc_info=True,
+                )
 
         # 凭证缺失属于执行前失败，直接回传 failed，不进入 started/heartbeat。
         if task.credential_error:

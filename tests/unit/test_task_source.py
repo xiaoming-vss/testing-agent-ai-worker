@@ -244,6 +244,35 @@ class TaskSourceTests(unittest.TestCase):
         self.assertEqual("enhanced_text", task.current_stage)
         self.assertEqual("{\"enhancedText\":\"来自 claim\"}", task.config_json)
 
+    def test_poll_task_snapshot_false_overrides_claim_checkpoint_true(self) -> None:
+        class SnapshotDisablesCheckpointClient(FakePlatformHttpClient):
+            def post(self, path: str, json_body: dict[str, Any]) -> dict[str, Any] | None:
+                payload = super().post(path, json_body)
+                assert payload is not None
+                payload["checkpointEnabled"] = True
+                return payload
+
+            def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
+                payload = super().get(path, params)
+                assert payload is not None
+                payload["checkpointEnabled"] = False
+                payload["run"].pop("checkpointEnabled", None)
+                return payload
+
+        task_source = HttpClaimTaskSource(
+            client=SnapshotDisablesCheckpointClient(),
+            claim_path="/internal/ai-worker/tasks/claim",
+            snapshot_path_template="/internal/ai-worker/tasks/{task_id}/snapshot",
+            llm_credentials_path_template="/internal/ai-worker/tasks/{task_id}/llm-credentials",
+            worker_id="worker-local",
+        )
+
+        task = task_source.poll_task()
+
+        self.assertIsNotNone(task)
+        assert task is not None
+        self.assertFalse(task.checkpoint_enabled)
+
     def test_poll_task_sets_credential_error_on_failure(self) -> None:
         client = FakePlatformHttpClient()
         client.raise_on_credentials = True
@@ -295,6 +324,31 @@ class TaskSourceTests(unittest.TestCase):
         self.assertEqual("functional_case_generate", task.task_type)
         self.assertEqual("text", task.payload.source_type)
         self.assertEqual("功能测试需求文本", task.payload.source_content)
+
+    def test_poll_ui_task_maps_source_archive_download_url(self) -> None:
+        class UiTaskClient(FakePlatformHttpClient):
+            def post(self, path: str, json_body: dict[str, Any]) -> dict[str, Any] | None:
+                payload = super().post(path, json_body)
+                assert payload is not None
+                payload["taskType"] = "ui_case_generate"
+                return payload
+
+            def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
+                payload = super().get(path, params)
+                assert payload is not None
+                payload["run"]["taskType"] = "ui_case_generate"
+                payload["run"]["sourceArchiveDownloadUrl"] = "/internal/tasks/source.zip"
+                return payload
+
+        task = HttpClaimTaskSource(
+            client=UiTaskClient(), claim_path="/claim", snapshot_path_template="/snapshot/{task_id}",
+            llm_credentials_path_template="/credentials/{task_id}", worker_id="worker",
+        ).poll_task()
+
+        self.assertIsNotNone(task)
+        assert task is not None
+        self.assertEqual("ui_case_generate", task.task_type)
+        self.assertEqual("/internal/tasks/source.zip", task.payload.source_archive_download_url)
 
     def test_poll_functional_task_infers_source_type_from_document_type(self) -> None:
         class FunctionalDocumentTaskClient(FakePlatformHttpClient):

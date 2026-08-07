@@ -19,6 +19,7 @@ class TaskPayload(BaseModel):
     openapi_content: str
     source_content: str = ""
     document_download_url: str = ""
+    source_archive_download_url: str = ""
     document_type: str = ""
     source_type: str = ""
     target_scope: str = ""

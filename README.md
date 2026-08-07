@@ -1,8 +1,8 @@
 # Testing Agent AI Worker
 
-`testing-agent-ai-worker` is a polling-based Python worker that generates API
-test cases, functional test cases, and requirement analysis results for the
-testing agent platform.
+`testing-agent-ai-worker` is a polling-based Python worker that generates API,
+functional, and UI test cases, requirement analysis results, and test reports
+for the testing agent platform.
 
 ## Runtime choices
 
@@ -58,6 +58,18 @@ Run the worker with the checked-in `config/worker.toml`:
 uv run testing-agent-ai-worker
 ```
 
+Before connecting to a platform, provide runtime values through environment
+variables. The checked-in file intentionally contains no credential and uses
+the portable `runtime/` directory for nanobot data:
+
+```powershell
+$env:TESTING_AGENT_PLATFORM_BASE_URL = "https://platform.example.com"
+$env:TESTING_AGENT_WORKER_TOKEN = "<worker-token>"
+$env:TESTING_AGENT_NANOBOT_RUNTIME_ROOT = "D:\\nanobot-runtime"
+```
+
+Never commit provider API keys or worker tokens.
+
 The worker defaults to long-running polling. Set `[worker].run_once = true` in
 `config/worker.toml` when you want a single polling cycle for local debugging.
 
@@ -109,8 +121,8 @@ For `functional_case_generate` text tasks, the worker now:
 When `checkpointEnabled=true`, the worker also supports staged resume for
 functional text tasks:
 
-- `enhanced_text` -> writes `waiting_review` progress only
-- `requirement_analysis` -> resumes from `configJson.enhancedText`
+- `requirement_analysis` -> analyzes `sourceContent` and writes `waiting_review`
+  progress with `configJson.requirementAnalysis`
 - `case_names` -> resumes from `configJson.requirementAnalysis`
 - `detailed_cases` -> resumes from `configJson.caseNames`, reports batch
   progress, and only then sends `completed`
@@ -134,6 +146,13 @@ For `requirement_analysis` tasks, the worker:
 Other task types, functional tasks with unsupported `source_type`, or
 requirement-analysis tasks with unsupported `documentType`, still return explicit
 failures after being claimed.
+
+The worker also supports `ui_case_generate`: it downloads the ZIP source archive
+from `sourceArchiveDownloadUrl`, safely extracts it, runs `generate-ui-test-case`,
+and requires a non-empty YAML list as the result.
+
+For `test_report_generate`, the worker passes `dailyMetrics` to
+`advanced-test-report-generator` and returns the generated report text.
 
 If you want to call the demo directly from Python, pass the values as function
 arguments:
@@ -180,6 +199,6 @@ It does not read local `SKILL.md` files.
 
 ## Next steps
 
-- connect a real task source
-- add a task processor that drives nanobot stages
-- persist task results and failure records
+- add integration tests against a real platform environment
+- add local failure persistence and retry auditing
+- add runtime metrics and task-level observability

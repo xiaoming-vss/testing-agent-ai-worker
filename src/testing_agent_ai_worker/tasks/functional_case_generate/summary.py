@@ -6,6 +6,7 @@ import json
 
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskStatus
 from testing_agent_ai_worker.models.task import Task
+from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 
 
 def build_progress(
@@ -13,7 +14,6 @@ def build_progress(
     *,
     current_stage: str,
     stage_status: str,
-    enhanced_text: str,
     requirement_analysis_json: str,
     case_names_json: str,
     detailed_cases_json: str,
@@ -21,7 +21,6 @@ def build_progress(
     """构造功能任务的阶段性 progress 快照。"""
 
     config_json = build_config_json(
-        enhanced_text=enhanced_text,
         requirement_analysis_json=requirement_analysis_json,
         case_names_json=case_names_json,
     )
@@ -44,7 +43,6 @@ def build_progress(
 
 def build_config_json(
     *,
-    enhanced_text: str,
     requirement_analysis_json: str,
     case_names_json: str,
 ) -> str:
@@ -52,7 +50,6 @@ def build_config_json(
 
     return json.dumps(
         {
-            "enhancedText": enhanced_text,
             "requirementAnalysis": parse_optional_json(requirement_analysis_json),
             "caseNames": parse_optional_json(case_names_json),
         },
@@ -72,23 +69,18 @@ def build_result_summary_json(
     """构造平台展示用摘要 JSON。"""
 
     document_type = (task.payload.document_type or task.payload.source_type or "").strip().lower()
-    summary = {
-        "taskId": task.task_id,
-        "runId": task.run_id,
-        "generateTaskId": task.generate_task_id,
-        "taskType": task.task_type,
-        "status": status.value if isinstance(status, TaskStatus) else status,
-        "projectId": task.project_id,
-        "sprintId": task.sprint_id,
-        "requirementId": task.requirement_id,
-        "documentType": document_type,
-        "sourceType": document_type,
-        "caseCount": count_cases(detailed_cases_json),
-        "configJsonLength": len(config_json),
-        "resultLength": len(detailed_cases_json),
-        "errorMessage": error_message or "",
-    }
-    return json.dumps(summary, ensure_ascii=False)
+    return build_task_result_summary(
+        task=task,
+        status=status,
+        error_message=error_message,
+        details={
+            "documentType": document_type,
+            "sourceType": document_type,
+            "caseCount": count_cases(detailed_cases_json),
+            "configJsonLength": len(config_json),
+            "resultLength": len(detailed_cases_json),
+        },
+    )
 
 
 def parse_optional_json(raw_json_text: str):

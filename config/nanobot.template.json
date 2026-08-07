@@ -305,7 +305,7 @@
     },
     "providers": {
         "custom": {
-            "apiKey": "sksTmRh6aQdJrSNqjZXbX0PVf9vDJNqN",
+            "apiKey": "",
             "apiBase": "http://coding101.site/v1",
             "apiType": "auto",
             "extraHeaders": null,

@@ -145,10 +145,10 @@ class NanobotChainRunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("请先加载本地 skill：detailed-test-case-generator", factory.bot.calls[2]["message"])
         self.assertIn("analysis result", factory.bot.calls[2]["message"])
         self.assertIn('"model": "登录"', factory.bot.calls[2]["message"])
-        self.assertIn("请直接返回 JSON 内容", factory.bot.calls[2]["message"])
+        self.assertIn("请直接返回包含 cases 数组的详细测试用例 JSON", factory.bot.calls[2]["message"])
         self.assertIn("请先加载本地 skill：detailed-test-case-generator", factory.bot.calls[3]["message"])
         self.assertIn('"model": "项目管理"', factory.bot.calls[3]["message"])
-        self.assertIn("请直接返回 JSON 内容", factory.bot.calls[3]["message"])
+        self.assertIn("请直接返回包含 cases 数组的详细测试用例 JSON", factory.bot.calls[3]["message"])
         self.assertIn("只保留核心业务场景", factory.bot.calls[3]["message"])
 
     async def test_run_requirement_analysis_chain_uses_three_skill_names_without_api_constraints(self) -> None:

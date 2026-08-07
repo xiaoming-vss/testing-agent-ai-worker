@@ -87,6 +87,10 @@ class PlatformSnapshotRun(BaseModel):
         default="",
         validation_alias=AliasChoices("documentDownloadUrl", "document_download_url"),
     )
+    source_archive_download_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("sourceArchiveDownloadUrl", "source_archive_download_url"),
+    )
     document_type: str = Field(
         default="",
         validation_alias=AliasChoices("documentType", "document_type"),

@@ -9,6 +9,7 @@ from datetime import datetime
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import RequirementSourceDownloader
+from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 
 
 REQUIREMENT_ANALYSIS_INITIAL_STAGE = "extracting_text"
@@ -291,19 +292,14 @@ def _build_result_summary_json(
     output_yaml: str,
     error_message: str | None,
 ) -> str:
-    summary = {
-        "taskId": task.task_id,
-        "runId": task.run_id,
-        "generateTaskId": task.generate_task_id,
-        "taskType": task.task_type,
-        "status": status.value if isinstance(status, TaskStatus) else status,
-        "projectId": task.project_id,
-        "sprintId": task.sprint_id,
-        "requirementId": task.requirement_id,
-        "sourceType": task.payload.source_type,
-        "documentType": task.payload.document_type,
-        "configJsonLength": len(config_json),
-        "resultLength": len(output_yaml),
-        "errorMessage": error_message or "",
-    }
-    return json.dumps(summary, ensure_ascii=False)
+    return build_task_result_summary(
+        task=task,
+        status=status,
+        error_message=error_message,
+        details={
+            "sourceType": task.payload.source_type,
+            "documentType": task.payload.document_type,
+            "configJsonLength": len(config_json),
+            "resultLength": len(output_yaml),
+        },
+    )

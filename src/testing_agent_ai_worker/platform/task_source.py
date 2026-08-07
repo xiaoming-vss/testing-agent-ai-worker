@@ -112,7 +112,11 @@ class HttpClaimTaskSource:
 
         snapshot_task = snapshot_response.run
 
-        snapshot_checkpoint_enabled = snapshot_task.checkpoint_enabled
+        snapshot_checkpoint_enabled = (
+            snapshot_task.checkpoint_enabled
+            if "checkpoint_enabled" in snapshot_task.model_fields_set
+            else None
+        )
         snapshot_current_stage = snapshot_task.current_stage
         snapshot_config_json = snapshot_task.config_json
 
@@ -124,7 +128,7 @@ class HttpClaimTaskSource:
 
         checkpoint_enabled = (
             snapshot_checkpoint_enabled
-            if snapshot_checkpoint_enabled
+            if snapshot_checkpoint_enabled is not None
             else bool(claimed_task.checkpoint_enabled)
         )
         current_stage = snapshot_current_stage or claimed_task.current_stage
@@ -153,6 +157,7 @@ class HttpClaimTaskSource:
                 openapi_content=snapshot_task.source_content,
                 source_content=snapshot_task.source_content,
                 document_download_url=snapshot_task.document_download_url,
+                source_archive_download_url=snapshot_task.source_archive_download_url,
                 document_type=document_type,
                 source_type=source_type,
                 target_scope=snapshot_task.target_scope,
@@ -167,6 +172,7 @@ class HttpClaimTaskSource:
                     "requirementId": claimed_task.requirement_id or snapshot_task.requirement_id,
                     "targetScope": snapshot_task.target_scope,
                     "documentDownloadUrl": snapshot_task.document_download_url,
+                    "sourceArchiveDownloadUrl": snapshot_task.source_archive_download_url,
                     "documentType": document_type,
                     "dailyMetrics": daily_metrics,
                     "checkpointEnabled": checkpoint_enabled,

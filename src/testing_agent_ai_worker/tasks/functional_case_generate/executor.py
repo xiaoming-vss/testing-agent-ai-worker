@@ -154,7 +154,6 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
                         task,
                         current_stage="detailed_cases",
                         stage_status="running",
-                        enhanced_text=source_text,
                         requirement_analysis_json=stage_state["requirement_analysis_json"],
                         case_names_json=stage_state["case_names_json"],
                         detailed_cases_json=accumulated_result,
@@ -165,7 +164,6 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
             assert isinstance(chain_result, FunctionalChainRunResult)
 
             config_json = build_config_json(
-                enhanced_text=source_text,
                 requirement_analysis_json=chain_result.requirement_analysis_output,
                 case_names_json=chain_result.case_names_output,
             )
@@ -202,7 +200,6 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
                 task,
                 current_stage="requirement_analysis",
                 stage_status="running",
-                enhanced_text=task.payload.source_content,
                 requirement_analysis_json=requirement_analysis_output,
                 case_names_json="",
                 detailed_cases_json=EMPTY_CASES_JSON,
@@ -224,7 +221,6 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
                 task,
                 current_stage="case_names",
                 stage_status="running",
-                enhanced_text=task.payload.source_content,
                 requirement_analysis_json=stage_state["requirement_analysis_json"],
                 case_names_json=case_names_output,
                 detailed_cases_json=EMPTY_CASES_JSON,

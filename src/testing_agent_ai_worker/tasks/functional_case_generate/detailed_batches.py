@@ -7,7 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from testing_agent_ai_worker.nanobot_runtime.prompt import (
-    JSON_ONLY_INSTRUCTION,
+    FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION,
     append_stage_instruction,
     build_skill_message,
 )
@@ -41,7 +41,7 @@ def _build_functional_detailed_case_body(
 def _build_functional_detailed_case_instruction(extra_instruction: str) -> str:
     """为 detailed cases 追加 JSON-only 约束。"""
 
-    return append_stage_instruction(extra_instruction, JSON_ONLY_INSTRUCTION)
+    return append_stage_instruction(extra_instruction, FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION)
 
 
 def _normalize_json_text(raw_json_text: str) -> str:

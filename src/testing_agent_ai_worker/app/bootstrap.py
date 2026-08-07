@@ -21,6 +21,8 @@ from testing_agent_ai_worker.tasks.functional_case_generate.executor import Func
 from testing_agent_ai_worker.tasks.requirement_analysis.executor import RequirementAnalysisNanobotExecutor
 from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import PlatformRequirementSourceDownloader
 from testing_agent_ai_worker.tasks.test_report_generate.executor import TestReportNanobotExecutor
+from testing_agent_ai_worker.tasks.ui_case_generate.executor import UiCaseNanobotExecutor
+from testing_agent_ai_worker.tasks.ui_case_generate.source_archive import PlatformSourceArchiveDownloader
 from testing_agent_ai_worker.worker.dispatcher import WorkerTaskDispatcherExecutor
 from testing_agent_ai_worker.worker.lifecycle import WorkerLifecycle
 from testing_agent_ai_worker.worker.loop import run_worker_loop
@@ -91,6 +93,11 @@ def build_task_runner(
             test_report_executor=TestReportNanobotExecutor(
                 nanobot_config=settings.nanobot,
                 skill_syncer=skill_source,
+            ),
+            ui_executor=UiCaseNanobotExecutor(
+                nanobot_config=settings.nanobot,
+                skill_syncer=skill_source,
+                source_downloader=PlatformSourceArchiveDownloader(resolved_client),
             ),
         ),
         result_service=ResultService(result_sink),

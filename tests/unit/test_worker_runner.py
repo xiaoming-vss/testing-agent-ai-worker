@@ -41,6 +41,11 @@ class _RecordingSink(ResultSink):
         self.result_calls.append(result)
 
 
+class _FailingProgressSink(_RecordingSink):
+    def submit_progress(self, progress: TaskProgress) -> None:
+        raise RuntimeError("progress endpoint unavailable")
+
+
 class _SuccessfulExecutor(TaskExecutor):
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult:
         progress_callback(
@@ -150,6 +155,24 @@ class WorkerRunnerTests(unittest.TestCase):
         self.assertEqual(len(sink.result_calls), 1)
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(sink.progress_calls[0].current_stage, "openapi_extract")
+
+    def test_process_task_continues_when_progress_submission_fails(self) -> None:
+        sink = _FailingProgressSink()
+        runner = WorkerRunner(
+            executor=_SuccessfulExecutor(),
+            result_service=ResultService(sink),
+            lifecycle=WorkerLifecycle(
+                poll_interval_seconds=10,
+                heartbeat_interval_seconds=60,
+                run_once=False,
+            ),
+        )
+
+        result = runner.process_task(self._make_task())
+
+        self.assertEqual(TaskStatus.SUCCESS, result.status)
+        self.assertEqual(1, len(sink.result_calls))
+        self.assertEqual(TaskStatus.SUCCESS, sink.result_calls[0].status)
 
     def test_process_task_sends_heartbeat_while_executor_is_running(self) -> None:
         sink = _RecordingSink()

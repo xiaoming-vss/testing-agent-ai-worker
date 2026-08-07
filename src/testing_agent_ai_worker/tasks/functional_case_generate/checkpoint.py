@@ -35,27 +35,11 @@ def execute_checkpoint_task(
     """执行 checkpoint 模式的阶段恢复。"""
 
     stage = task.current_stage.strip()
-    if stage == "enhanced_text":
-        progress_callback(
-            build_progress(
-                task,
-                current_stage=stage,
-                stage_status="waiting_review",
-                enhanced_text=task.payload.source_content,
-                requirement_analysis_json="",
-                case_names_json="",
-                detailed_cases_json=EMPTY_CASES_JSON,
-            )
-        )
-        return None
-
-    config = _read_checkpoint_config(task)
-    enhanced_text = _enhanced_text_for_stage(task, config, stage)
 
     if stage == "requirement_analysis":
         requirement_analysis_json = _resolve_text_result(
             skill_runner(
-                input_text=enhanced_text,
+                input_text=task.payload.source_content,
                 session_key=task.nanobot_session_key,
                 skill_name="solution-test-point-analyzer",
                 config_path=config_path,
@@ -68,7 +52,6 @@ def execute_checkpoint_task(
                 task,
                 current_stage=stage,
                 stage_status="waiting_review",
-                enhanced_text=enhanced_text,
                 requirement_analysis_json=requirement_analysis_json,
                 case_names_json="",
                 detailed_cases_json=EMPTY_CASES_JSON,
@@ -76,6 +59,7 @@ def execute_checkpoint_task(
         )
         return None
 
+    config = _read_checkpoint_config(task)
     requirement_analysis_json = _require_config_json_text(config, "requirementAnalysis", stage)
     if stage == "case_names":
         case_names_json = _resolve_text_result(
@@ -93,7 +77,6 @@ def execute_checkpoint_task(
                 task,
                 current_stage=stage,
                 stage_status="waiting_review",
-                enhanced_text=enhanced_text,
                 requirement_analysis_json=requirement_analysis_json,
                 case_names_json=case_names_json,
                 detailed_cases_json=EMPTY_CASES_JSON,
@@ -117,7 +100,6 @@ def execute_checkpoint_task(
                         task,
                         current_stage=stage,
                         stage_status="running",
-                        enhanced_text=enhanced_text,
                         requirement_analysis_json=requirement_analysis_json,
                         case_names_json=case_names_json,
                         detailed_cases_json=accumulated_result,
@@ -126,7 +108,6 @@ def execute_checkpoint_task(
             )
         )
         config_json = build_config_json(
-            enhanced_text=enhanced_text,
             requirement_analysis_json=requirement_analysis_json,
             case_names_json=case_names_json,
         )
@@ -179,28 +160,6 @@ def _read_checkpoint_config(task: Task) -> dict[str, object]:
     if not isinstance(parsed, dict):
         raise ValueError("configJson 顶层必须是对象")
     return parsed
-
-
-def _optional_config_text(config: dict[str, object], field_name: str) -> str:
-    value = config.get(field_name, "")
-    return value if isinstance(value, str) else ""
-
-
-def _require_config_text(
-    config: dict[str, object],
-    field_name: str,
-    stage: str,
-) -> str:
-    value = _optional_config_text(config, field_name).strip()
-    if not value:
-        raise ValueError(f"{stage} 阶段缺少 configJson.{field_name}")
-    return value
-
-
-def _enhanced_text_for_stage(task: Task, config: dict[str, object], stage: str) -> str:
-    if stage == "requirement_analysis":
-        return _optional_config_text(config, "enhancedText").strip() or task.payload.source_content
-    return _require_config_text(config, "enhancedText", stage)
 
 
 def _optional_config_json_text(config: dict[str, object], field_name: str) -> str:

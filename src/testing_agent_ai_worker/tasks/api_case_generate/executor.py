@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from datetime import datetime
 
 from testing_agent_ai_worker.config.models import NanobotConfig
@@ -13,6 +12,7 @@ from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_p
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
 from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.tasks.api_case_generate.chain import ChainRunResult, run_chain
+from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.worker.runner import TaskExecutor
 
 
@@ -114,21 +114,16 @@ class ApiCaseNanobotExecutor(TaskExecutor):
         output_yaml: str,
         error_message: str | None,
     ) -> str:
-        summary = {
-            "taskId": task.task_id,
-            "runId": task.run_id,
-            "generateTaskId": task.generate_task_id,
-            "taskType": task.task_type,
-            "status": status.value if isinstance(status, TaskStatus) else status,
-            "projectId": task.project_id,
-            "sprintId": task.sprint_id,
-            "requirementId": task.requirement_id,
-            "sourceType": task.payload.source_type,
-            "jsonLength": len(intermediate_json_text),
-            "yamlLength": len(output_yaml),
-            "errorMessage": error_message or "",
-        }
-        return json.dumps(summary, ensure_ascii=False)
+        return build_task_result_summary(
+            task=task,
+            status=status,
+            error_message=error_message,
+            details={
+                "sourceType": task.payload.source_type,
+                "jsonLength": len(intermediate_json_text),
+                "yamlLength": len(output_yaml),
+            },
+        )
 
     @staticmethod
     def _build_api_instruction(task: Task) -> str:

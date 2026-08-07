@@ -2166,6 +2166,7 @@ dependencies = [
     { name = "httpx" },
     { name = "nanobot-ai" },
     { name = "pydantic" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -2173,6 +2174,7 @@ requires-dist = [
     { name = "httpx" },
     { name = "nanobot-ai" },
     { name = "pydantic" },
+    { name = "pyyaml" },
 ]
 
 [[package]]

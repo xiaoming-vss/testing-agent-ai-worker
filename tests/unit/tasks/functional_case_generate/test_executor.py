@@ -208,11 +208,11 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
         first_config = json.loads(progress_events[0].intermediate_json_text)
         second_config = json.loads(progress_events[1].intermediate_json_text)
         final_config = json.loads(result.intermediate_json_text)
-        self.assertEqual(first_config["enhancedText"], task.payload.source_content)
+        self.assertNotIn("enhancedText", first_config)
         self.assertIsNotNone(first_config["requirementAnalysis"])
         self.assertIsNone(first_config["caseNames"])
         self.assertIsNotNone(second_config["caseNames"])
-        self.assertEqual(final_config["enhancedText"], task.payload.source_content)
+        self.assertNotIn("enhancedText", final_config)
         self.assertEqual(final_config["caseNames"]["categories"][0]["model"], "登录")
         self.assertEqual(final_config["caseNames"]["categories"][1]["model"], "项目管理")
 
@@ -330,11 +330,11 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
         self.assertEqual(captured["skill_name"], "solution-test-point-analyzer")
         self.assertIn(task.payload.extra_instruction, captured["extra_instruction"])
         self.assertIn(FUNCTIONAL_ANALYSIS_JSON_ONLY_INSTRUCTION, captured["extra_instruction"])
-        self.assertEqual(config["enhancedText"], task.payload.source_content)
+        self.assertNotIn("enhancedText", config)
         self.assertEqual(config["requirementAnalysis"]["Platform_core_functions"], ["登录"])
         self.assertIsNone(config["caseNames"])
 
-    def test_execute_checkpoint_requirement_analysis_uses_saved_enhanced_text_and_returns_none(self) -> None:
+    def test_execute_checkpoint_requirement_analysis_ignores_legacy_enhanced_text_and_returns_none(self) -> None:
         executor_cls = getattr(executor_module, "FunctionalCaseNanobotExecutor", None)
         self.assertIsNotNone(executor_cls)
         if executor_cls is None:
@@ -384,7 +384,7 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
         )
 
         self.assertIsNone(result)
-        self.assertEqual(captured["input_text"], "这是审核后的增强文本")
+        self.assertEqual(captured["input_text"], task.payload.source_content)
         self.assertEqual(captured["skill_name"], "solution-test-point-analyzer")
         self.assertIn(task.payload.extra_instruction, captured["extra_instruction"])
         self.assertIn(FUNCTIONAL_ANALYSIS_JSON_ONLY_INSTRUCTION, captured["extra_instruction"])
@@ -398,9 +398,37 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
         self.assertEqual(progress_events[0].current_stage, "requirement_analysis")
         self.assertEqual(progress_events[0].stage_status, "waiting_review")
         config = json.loads(progress_events[0].intermediate_json_text)
-        self.assertEqual(config["enhancedText"], "这是审核后的增强文本")
+        self.assertNotIn("enhancedText", config)
         self.assertIsNotNone(config["requirementAnalysis"])
         self.assertIsNone(config["caseNames"])
+
+    def test_execute_checkpoint_requirement_analysis_ignores_invalid_old_config(self) -> None:
+        executor_cls = getattr(executor_module, "FunctionalCaseNanobotExecutor", None)
+        self.assertIsNotNone(executor_cls)
+        if executor_cls is None:
+            return
+
+        progress_events: list[TaskProgress] = []
+        task = self._make_task(
+            checkpoint_enabled=True,
+            current_stage="requirement_analysis",
+            config_json="not-json",
+        )
+        executor = executor_cls(
+            nanobot_config=NanobotConfig(),
+            chain_runner=lambda **kwargs: None,
+            skill_runner=lambda **kwargs: '{"Platform_core_functions": []}',
+        )
+
+        result = executor.execute(
+            task,
+            datetime.fromisoformat("2026-06-23T10:00:00+08:00"),
+            progress_events.append,
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(1, len(progress_events))
+        self.assertEqual("waiting_review", progress_events[0].stage_status)
 
     def test_execute_checkpoint_case_names_uses_saved_requirement_analysis_and_returns_none(self) -> None:
         executor_cls = getattr(executor_module, "FunctionalCaseNanobotExecutor", None)
@@ -443,7 +471,6 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
             current_stage="case_names",
             config_json=json.dumps(
                 {
-                    "enhancedText": "这是审核后的增强文本",
                     "requirementAnalysis": requirement_analysis,
                     "caseNames": None,
                 },
@@ -564,7 +591,6 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
             current_stage="detailed_cases",
             config_json=json.dumps(
                 {
-                    "enhancedText": "这是审核后的增强文本",
                     "requirementAnalysis": requirement_analysis,
                     "caseNames": case_names,
                 },
@@ -593,7 +619,7 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(result.output_yaml, final_batch_json)
         final_config = json.loads(result.intermediate_json_text)
-        self.assertEqual(final_config["enhancedText"], "这是审核后的增强文本")
+        self.assertNotIn("enhancedText", final_config)
         self.assertEqual(len(final_config["caseNames"]["categories"]), 2)
 
     def test_execute_uses_task_scoped_nanobot_config_when_llm_credentials_exist(self) -> None:

@@ -150,6 +150,21 @@ class WorkerMainTests(unittest.TestCase):
             ),
         )
 
+    def test_load_settings_applies_secret_and_runtime_environment_overrides(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "TESTING_AGENT_PLATFORM_BASE_URL": "https://platform.runtime.example",
+                "TESTING_AGENT_WORKER_TOKEN": "runtime-worker-token",
+                "TESTING_AGENT_NANOBOT_RUNTIME_ROOT": "D:/runtime/nanobot",
+            },
+        ):
+            settings = load_settings(PROJECT_ROOT / "config" / "worker.toml")
+
+        self.assertEqual("https://platform.runtime.example", settings.platform.base_url)
+        self.assertEqual("runtime-worker-token", settings.platform.worker_token)
+        self.assertEqual("D:/runtime/nanobot", settings.nanobot.runtime_root)
+
     def test_run_poll_once_prints_no_task_when_platform_returns_empty(self) -> None:
         poller = _FakePoller(task=None)
         output = io.StringIO()
