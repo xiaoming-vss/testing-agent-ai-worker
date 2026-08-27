@@ -16,13 +16,61 @@ from typing import Protocol
 import httpx
 
 from testing_agent_ai_worker.platform.errors import TaskSourceError
-from testing_agent_ai_worker.models.task import LlmCredentials, Task, TaskPayload
+from testing_agent_ai_worker.models.task import (
+    ExistingTestCases,
+    GitlabCredentials,
+    LlmCredentials,
+    RepositoryBinding,
+    RequirementInput,
+    Task,
+    TaskPayload,
+)
 from testing_agent_ai_worker.platform.http_client import PlatformHttpClient
 from testing_agent_ai_worker.platform.schemas import (
     PlatformClaimTask,
+    PlatformGitlabCredentialsResponse,
     PlatformLlmCredentials,
     PlatformSnapshotResponse,
 )
+
+
+def parse_gitlab_credentials(payload: dict[str, Any] | None) -> list[GitlabCredentials]:
+    """解析 gitlab-credentials 端点响应。
+
+    同一 connectionId 出现多次时聚合 repositoryIds(控制面按 connectionId 聚合,这里再做
+    一次防御性合并,保证内部模型每个连接只有一个条目)。
+    """
+
+    if not payload:
+        return []
+    response = PlatformGitlabCredentialsResponse.model_validate(
+        {**payload, "credentials": payload.get("credentials") or []}
+    )
+    merged: dict[str, GitlabCredentials] = {}
+    for item in response.credentials:
+        # 仅在 connectionId 非空时聚合;缺 connectionId 的条目不参与合并,各自独立,
+        # 避免把不同连接因 base_url 相同而误并为一条。
+        if not item.connection_id:
+            merged[f"standalone-{len(merged)}"] = GitlabCredentials(
+                connection_id="",
+                base_url=item.base_url,
+                access_token=item.access_token,
+                repository_ids=list(item.repository_ids),
+            )
+            continue
+        existing = merged.get(item.connection_id)
+        if existing is None:
+            merged[item.connection_id] = GitlabCredentials(
+                connection_id=item.connection_id,
+                base_url=item.base_url,
+                access_token=item.access_token,
+                repository_ids=list(item.repository_ids),
+            )
+            continue
+        for repository_id in item.repository_ids:
+            if repository_id not in existing.repository_ids:
+                existing.repository_ids.append(repository_id)
+    return list(merged.values())
 
 
 class TaskSource(Protocol):
@@ -120,6 +168,24 @@ class HttpClaimTaskSource:
         snapshot_current_stage = snapshot_task.current_stage
         snapshot_config_json = snapshot_task.config_json
 
+        # code_risk_analysis 快照字段可能落在顶层或 run 内:顶层显式提供时优先(与 checkpoint
+        # 字段的 model_fields_set 判定一致),否则回退 run 内,避免空对象误落层。
+        requirement_payload = (
+            snapshot_response.requirement
+            if snapshot_response.requirement is not None
+            else snapshot_task.requirement
+        )
+        bindings_payload = (
+            snapshot_response.bindings
+            if "bindings" in snapshot_response.model_fields_set
+            else snapshot_task.bindings
+        )
+        existing_tests_payload = (
+            snapshot_response.existing_tests
+            if snapshot_response.existing_tests is not None
+            else snapshot_task.existing_tests
+        )
+
         if snapshot_response.checkpoint_enabled is not None:
             snapshot_checkpoint_enabled = snapshot_response.checkpoint_enabled
         # 兼容 checkpoint 字段可能落在 snapshot 顶层，也可能仍落在 snapshot.run 内。
@@ -153,6 +219,20 @@ class HttpClaimTaskSource:
             checkpoint_enabled=checkpoint_enabled,
             current_stage=current_stage,
             config_json=config_json,
+            requirement_input=(
+                RequirementInput.model_validate(requirement_payload)
+                if requirement_payload
+                else None
+            ),
+            bindings=[RepositoryBinding.model_validate(item) for item in bindings_payload],
+            existing_tests=(
+                ExistingTestCases.model_validate(existing_tests_payload)
+                if existing_tests_payload
+                else ExistingTestCases()
+            ),
+            gitlab_credentials_url=(
+                snapshot_response.gitlab_credentials_url or snapshot_task.gitlab_credentials_url
+            ),
             payload=TaskPayload(
                 openapi_content=snapshot_task.source_content,
                 source_content=snapshot_task.source_content,

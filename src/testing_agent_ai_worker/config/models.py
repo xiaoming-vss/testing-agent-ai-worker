@@ -32,6 +32,10 @@ class NanobotConfig(BaseModel):
     provider_request_timeout_seconds: float | None = None
 
 
+class CodeRiskAnalysisConfig(BaseModel):
+    gitlab_timeout_seconds: float = 120.0
+
+
 class LoggingConfig(BaseModel):
     level: str = "INFO"
     console: bool = True
@@ -44,4 +48,5 @@ class Settings(BaseModel):
     worker: WorkerConfig = WorkerConfig()
     platform: PlatformConfig = PlatformConfig()
     nanobot: NanobotConfig = NanobotConfig()
+    code_risk_analysis: CodeRiskAnalysisConfig = CodeRiskAnalysisConfig()
     logging: LoggingConfig = LoggingConfig()

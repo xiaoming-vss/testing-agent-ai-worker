@@ -116,6 +116,17 @@ class PlatformSnapshotRun(BaseModel):
         default_factory=dict,
         validation_alias=AliasChoices("dailyMetrics", "daily_metrics"),
     )
+    # code_risk_analysis 快照字段(可能落在 run 内或顶层,两层都声明以兼容位置漂移)。
+    requirement: dict[str, object] | None = None
+    bindings: list[dict[str, object]] = Field(default_factory=list)
+    existing_tests: dict[str, object] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("existingTests", "existing_tests"),
+    )
+    gitlab_credentials_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("gitlabCredentialsUrl", "gitlab_credentials_url"),
+    )
 
 class PlatformSnapshotResponse(BaseModel):
     run: PlatformSnapshotRun
@@ -139,6 +150,17 @@ class PlatformSnapshotResponse(BaseModel):
         default_factory=dict,
         validation_alias=AliasChoices("dailyMetrics", "daily_metrics"),
     )
+    # code_risk_analysis 快照字段,同样声明在顶层以兼容位置漂移。
+    requirement: dict[str, object] | None = None
+    bindings: list[dict[str, object]] = Field(default_factory=list)
+    existing_tests: dict[str, object] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("existingTests", "existing_tests"),
+    )
+    gitlab_credentials_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("gitlabCredentialsUrl", "gitlab_credentials_url"),
+    )
 
 class PlatformProjectSkill(BaseModel):
     skill_space_id: str = Field(
@@ -158,5 +180,27 @@ class PlatformProjectSkill(BaseModel):
 
 class PlatformProjectSkillListResponse(BaseModel):
     skills: list[PlatformProjectSkill] = Field(default_factory=list)
+
+
+class PlatformGitlabCredentials(BaseModel):
+    connection_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("connectionId", "connection_id"),
+    )
+    base_url: str = Field(default="", validation_alias=AliasChoices("baseUrl", "base_url"))
+    access_token: str = Field(
+        default="",
+        validation_alias=AliasChoices("accessToken", "access_token"),
+    )
+    repository_ids: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("repositoryIds", "repository_ids"),
+    )
+
+
+class PlatformGitlabCredentialsResponse(BaseModel):
+    task_id: str = Field(default="", validation_alias=AliasChoices("taskId", "task_id"))
+    bindings: list[dict[str, object]] = Field(default_factory=list)
+    credentials: list[PlatformGitlabCredentials] = Field(default_factory=list)
 
 
