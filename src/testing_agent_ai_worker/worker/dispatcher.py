@@ -20,12 +20,14 @@ class WorkerTaskDispatcherExecutor(TaskExecutor):
         requirement_executor: TaskExecutor,
         test_report_executor: TaskExecutor | None = None,
         ui_executor: TaskExecutor | None = None,
+        code_risk_executor: TaskExecutor | None = None,
     ) -> None:
         self.api_executor = api_executor
         self.functional_executor = functional_executor
         self.requirement_executor = requirement_executor
         self.test_report_executor = test_report_executor
         self.ui_executor = ui_executor
+        self.code_risk_executor = code_risk_executor
 
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult:
         """执行任务分发。"""
@@ -40,6 +42,8 @@ class WorkerTaskDispatcherExecutor(TaskExecutor):
             return self.test_report_executor.execute(task, started_at, progress_callback)
         if task.task_type == "ui_case_generate" and self.ui_executor is not None:
             return self.ui_executor.execute(task, started_at, progress_callback)
+        if task.task_type == "code_risk_analysis" and self.code_risk_executor is not None:
+            return self.code_risk_executor.execute(task, started_at, progress_callback)
         return TaskResult(
             task_id=task.task_id,
             run_id=task.run_id,

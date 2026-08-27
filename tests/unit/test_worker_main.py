@@ -16,6 +16,7 @@ if str(SRC_DIR) not in sys.path:
 
 from testing_agent_ai_worker.config.loader import load_settings
 from testing_agent_ai_worker.config.models import (
+    CodeRiskAnalysisConfig,
     LoggingConfig,
     NanobotConfig,
     PlatformConfig,
@@ -375,6 +376,7 @@ class WorkerMainTests(unittest.TestCase):
                 nanobot=NanobotConfig(
                     runtime_root="D:/tmp/nanobot-runtime",
                 ),
+                code_risk_analysis=CodeRiskAnalysisConfig(gitlab_timeout_seconds=45.0),
                 logging=LoggingConfig(),
             )
         )
@@ -388,6 +390,10 @@ class WorkerMainTests(unittest.TestCase):
         self.assertIsNotNone(task_runner.executor.functional_executor.skill_syncer)
         self.assertIsNotNone(task_runner.executor.requirement_executor.skill_syncer)
         self.assertIsNotNone(task_runner.executor.requirement_executor.source_downloader)
+        self.assertIsNotNone(task_runner.executor.code_risk_executor)
+        self.assertIsNotNone(task_runner.executor.code_risk_executor.skill_syncer)
+        # gitlab_timeout_seconds 必须来自配置,而非写死的默认值。
+        self.assertEqual(45.0, task_runner.executor.code_risk_executor.timeout_seconds)
 
 
 if __name__ == "__main__":

@@ -70,6 +70,33 @@ $env:TESTING_AGENT_NANOBOT_RUNTIME_ROOT = "D:\\nanobot-runtime"
 
 Never commit provider API keys or worker tokens.
 
+## Docker
+
+Build the production image from the repository root:
+
+```powershell
+docker build --tag testing-agent-ai-worker:dev .
+```
+
+Run the worker with platform configuration supplied at runtime. The platform
+URL must be reachable from inside the container; on Docker Desktop, use
+`host.docker.internal` instead of `127.0.0.1` for a service running on the host:
+
+```powershell
+docker run --detach `
+  --name testing-agent-ai-worker `
+  --restart unless-stopped `
+  --env TESTING_AGENT_PLATFORM_BASE_URL=http://host.docker.internal:9000 `
+  --env TESTING_AGENT_WORKER_TOKEN=<worker-token> `
+  --volume testing-agent-runtime:/data/runtime `
+  --volume testing-agent-logs:/app/logs `
+  testing-agent-ai-worker:dev
+```
+
+The image runs as the non-root user `worker` (`uid=10001`) and stores mutable
+nanobot data under `/data/runtime`. Logs are written to `/app/logs` as well as
+the container console according to `config/worker.toml`.
+
 The worker defaults to long-running polling. Set `[worker].run_once = true` in
 `config/worker.toml` when you want a single polling cycle for local debugging.
 
@@ -196,6 +223,29 @@ The chain demo uses skill names directly in the nanobot prompt:
 - `api-cases-yaml-generator`
 
 It does not read local `SKILL.md` files.
+
+## code_risk_analysis development verification (skill stub)
+
+The platform-side `code-risk-analysis` skill package is not ready yet, so the worker supports two modes:
+
+- **Unit tests**: the executor injects a fake skill runner (see `tests/unit/tasks/code_risk_analysis/test_executor.py`).
+- **Local stub (end-to-end)**: place a stub skill under the task workspace `skills` dir:
+
+```text
+<runtime_root>/workspaces/project-<projectId>/skills/code-risk-analysis/SKILL.md
+```
+
+The stub's only job is to return the four-section YAML report (`changeOverview` / `risks` / `affectedCases` / `coverageGaps`) for the given input (requirement understanding record + per-repo diff blocks + existing test cases). A minimal `SKILL.md` can just state that the agent must output exactly that YAML shape with per-repository `baselineCommit`/`headCommit`. The worker knows only the skill name and never depends on its content. Before running, the worker syncs the project skill space; if the `code-risk-analysis` directory is still missing it fails with "项目未配置 code-risk-analysis 技能包" instead of running blind.
+
+Manual end-to-end steps:
+
+1. Optionally set `[code_risk_analysis].gitlab_timeout_seconds` (default 120) in `config/worker.toml` to tune the GitLab compare timeout.
+2. Create the stub directory above with a minimal `SKILL.md` before starting the worker.
+3. Create a `code_risk_analysis` task on the platform (the requirement must have finished requirement analysis so a requirement understanding record exists).
+4. Start the worker with `run_once = true`; the logs should show `fetching_diff` then `analyzing` progress and a final `completed` callback.
+5. Success path: `resultYaml` has the four sections with per-repository baseline/head SHA. Failure paths: `errorMessage` and `remediation` are readable (missing understanding record, unavailable credentials, missing skill package, repo diff failure).
+
+Once the real skill package is uploaded to the project skill space, the existing hash/size/version sync replaces the stub automatically — no worker code change.
 
 ## Next steps
 

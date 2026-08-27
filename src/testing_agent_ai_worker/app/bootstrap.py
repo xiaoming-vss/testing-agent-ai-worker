@@ -17,6 +17,7 @@ from testing_agent_ai_worker.platform.task_source import HttpClaimTaskSource
 from testing_agent_ai_worker.services.result_service import ResultService
 from testing_agent_ai_worker.services.task_service import TaskService
 from testing_agent_ai_worker.tasks.api_case_generate.executor import ApiCaseNanobotExecutor
+from testing_agent_ai_worker.tasks.code_risk_analysis.executor import CodeRiskAnalysisNanobotExecutor
 from testing_agent_ai_worker.tasks.functional_case_generate.executor import FunctionalCaseNanobotExecutor
 from testing_agent_ai_worker.tasks.requirement_analysis.executor import RequirementAnalysisNanobotExecutor
 from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import PlatformRequirementSourceDownloader
@@ -98,6 +99,12 @@ def build_task_runner(
                 nanobot_config=settings.nanobot,
                 skill_syncer=skill_source,
                 source_downloader=PlatformSourceArchiveDownloader(resolved_client),
+            ),
+            code_risk_executor=CodeRiskAnalysisNanobotExecutor(
+                nanobot_config=settings.nanobot,
+                skill_syncer=skill_source,
+                client=resolved_client,
+                timeout_seconds=settings.code_risk_analysis.gitlab_timeout_seconds,
             ),
         ),
         result_service=ResultService(result_sink),
