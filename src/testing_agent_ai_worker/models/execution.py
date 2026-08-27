@@ -24,6 +24,7 @@ class TaskResult(BaseModel):
     output_yaml: str = ""
     result_summary_json: str = ""
     error_message: str | None = None
+    remediation: str | None = None
     started_at: datetime
     finished_at: datetime
     metadata: dict[str, object] = Field(default_factory=dict)

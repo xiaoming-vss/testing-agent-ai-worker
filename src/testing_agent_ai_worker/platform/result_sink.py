@@ -98,6 +98,7 @@ class HttpResultSink:
                 "startedAt": result.started_at.isoformat(),
                 "finishedAt": result.finished_at.isoformat(),
                 "errorMessage": result.error_message or "",
+                "remediation": result.remediation or "",
                 "configJson": result.intermediate_json_text,
                 "resultYaml": result.output_yaml,
                 "resultSummaryJson": result.result_summary_json,
