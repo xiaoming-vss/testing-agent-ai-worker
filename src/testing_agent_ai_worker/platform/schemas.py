@@ -162,26 +162,6 @@ class PlatformSnapshotResponse(BaseModel):
         validation_alias=AliasChoices("gitlabCredentialsUrl", "gitlab_credentials_url"),
     )
 
-class PlatformProjectSkill(BaseModel):
-    skill_space_id: str = Field(
-        default="",
-        validation_alias=AliasChoices("skillSpaceId", "skill_space_id"),
-    )
-    project_id: str = Field(default="", validation_alias=AliasChoices("projectId", "project_id"))
-    filename: str = ""
-    download_url: str = Field(
-        default="",
-        validation_alias=AliasChoices("downloadUrl", "download_url"),
-    )
-    hash: str = ""
-    size: int = 0
-    version: int = 0
-
-
-class PlatformProjectSkillListResponse(BaseModel):
-    skills: list[PlatformProjectSkill] = Field(default_factory=list)
-
-
 class PlatformGitlabCredentials(BaseModel):
     connection_id: str = Field(
         default="",

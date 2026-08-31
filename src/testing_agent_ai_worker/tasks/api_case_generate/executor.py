@@ -10,7 +10,6 @@ from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, T
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
-from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.tasks.api_case_generate.chain import ChainRunResult, run_chain
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.worker.runner import TaskExecutor
@@ -32,12 +31,10 @@ class ApiCaseNanobotExecutor(TaskExecutor):
         *,
         nanobot_config: NanobotConfig,
         chain_runner=run_chain,
-        skill_syncer: ProjectSkillSyncer | None = None,
     ) -> None:
         self.nanobot_config = nanobot_config
         self.runtime_paths = resolve_runtime_paths(nanobot_config)
         self.chain_runner = chain_runner
-        self.skill_syncer = skill_syncer
 
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult:
         """执行 API 用例生成。"""
@@ -54,7 +51,6 @@ class ApiCaseNanobotExecutor(TaskExecutor):
             )
 
         workspace = resolve_task_workspace(self.nanobot_config, task)
-        self._sync_project_skills(task, workspace)
 
         with task_config_path(nanobot_config=self.nanobot_config, task=task) as config_path:
             result = self.chain_runner(
@@ -133,7 +129,3 @@ class ApiCaseNanobotExecutor(TaskExecutor):
         if task.payload.extra_instruction.strip():
             parts.append(task.payload.extra_instruction.strip())
         return "\n".join(parts)
-
-    def _sync_project_skills(self, task: Task, workspace) -> None:
-        if self.skill_syncer is not None:
-            self.skill_syncer.sync_project_skills(project_id=task.project_id, workspace=workspace)

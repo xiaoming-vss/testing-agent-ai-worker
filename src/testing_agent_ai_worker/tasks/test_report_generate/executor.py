@@ -11,7 +11,6 @@ from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, T
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
-from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import run_skill_step
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.worker.runner import TaskExecutor
@@ -39,13 +38,11 @@ class TestReportNanobotExecutor(TaskExecutor):
         nanobot_config: NanobotConfig,
         skill_runner=run_skill_step,
         skill_name: str = TEST_REPORT_SKILL_NAME,
-        skill_syncer: ProjectSkillSyncer | None = None,
     ) -> None:
         self.nanobot_config = nanobot_config
         self.runtime_paths = resolve_runtime_paths(nanobot_config)
         self.skill_runner = skill_runner
         self.skill_name = skill_name
-        self.skill_syncer = skill_syncer
 
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult:
         """执行测试报告生成。"""
@@ -74,7 +71,6 @@ class TestReportNanobotExecutor(TaskExecutor):
             )
 
         workspace = resolve_task_workspace(self.nanobot_config, task)
-        self._sync_project_skills(task, workspace)
 
         input_text = json.dumps(daily_metrics, ensure_ascii=False, indent=2)
         progress_callback(
@@ -154,9 +150,5 @@ class TestReportNanobotExecutor(TaskExecutor):
                 "reportLength": len(report_text),
             },
         )
-
-    def _sync_project_skills(self, task: Task, workspace) -> None:
-        if self.skill_syncer is not None:
-            self.skill_syncer.sync_project_skills(project_id=task.project_id, workspace=workspace)
 
 

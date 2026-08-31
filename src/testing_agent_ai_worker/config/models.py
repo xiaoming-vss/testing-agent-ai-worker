@@ -9,6 +9,7 @@ class WorkerConfig(BaseModel):
     worker_id: str = "testing-agent-ai-worker"
     poll_interval_seconds: int = 10
     heartbeat_interval_seconds: int = 15
+    max_concurrent_tasks: int = 2
     run_once: bool = False
 
 
@@ -22,7 +23,6 @@ class PlatformConfig(BaseModel):
     task_progress_path: str = "/internal/ai-worker/tasks/{task_id}/progress"
     task_completed_path: str = "/internal/ai-worker/tasks/{task_id}/completed"
     task_llm_credentials_path: str = "/internal/ai-worker/tasks/{task_id}/llm-credentials"
-    project_skills_path: str = "/internal/ai-worker/projects/{project_id}/skills"
     request_timeout_seconds: float = 60.0
 
 

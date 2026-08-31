@@ -88,12 +88,6 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
         captured: dict[str, object] = {}
         events: list[str] = []
 
-        class FakeSkillSyncer:
-            def sync_project_skills(self, *, project_id: str, workspace: Path) -> None:
-                events.append("sync")
-                self.project_id = project_id
-                self.workspace = workspace
-
         def fake_chain_runner(**kwargs):
             events.append("chain")
             captured.update(kwargs)
@@ -105,12 +99,10 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
                 final_output="analysis:\n  summary: done",
             )
 
-        skill_syncer = FakeSkillSyncer()
         source_downloader = FakeSourceDownloader()
         executor = executor_cls(
             nanobot_config=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
             chain_runner=fake_chain_runner,
-            skill_syncer=skill_syncer,
             source_downloader=source_downloader,
         )
 
@@ -120,7 +112,7 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
             progress_events.append,
         )
 
-        self.assertEqual(events, ["sync", "chain"])
+        self.assertEqual(events, ["chain"])
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(result.output_yaml, "analysis:\n  summary: done")
         final_config = json.loads(result.intermediate_json_text)

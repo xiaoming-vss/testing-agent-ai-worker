@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable
 
@@ -12,7 +14,6 @@ from testing_agent_ai_worker.config.loader import load_settings
 from testing_agent_ai_worker.config.models import Settings
 from testing_agent_ai_worker.platform.http_client import PlatformHttpClient
 from testing_agent_ai_worker.platform.result_sink import HttpResultSink
-from testing_agent_ai_worker.platform.skill_source import PlatformProjectSkillSource
 from testing_agent_ai_worker.platform.task_source import HttpClaimTaskSource
 from testing_agent_ai_worker.services.result_service import ResultService
 from testing_agent_ai_worker.services.task_service import TaskService
@@ -72,37 +73,27 @@ def build_task_runner(
         progress_path_template=settings.platform.task_progress_path,
         completed_path_template=settings.platform.task_completed_path,
     )
-    skill_source = PlatformProjectSkillSource(
-        client=resolved_client,
-        list_path_template=settings.platform.project_skills_path,
-    )
     return WorkerRunner(
         executor=WorkerTaskDispatcherExecutor(
             api_executor=ApiCaseNanobotExecutor(
                 nanobot_config=settings.nanobot,
-                skill_syncer=skill_source,
             ),
             functional_executor=FunctionalCaseNanobotExecutor(
                 nanobot_config=settings.nanobot,
-                skill_syncer=skill_source,
             ),
             requirement_executor=RequirementAnalysisNanobotExecutor(
                 nanobot_config=settings.nanobot,
-                skill_syncer=skill_source,
                 source_downloader=PlatformRequirementSourceDownloader(resolved_client),
             ),
             test_report_executor=TestReportNanobotExecutor(
                 nanobot_config=settings.nanobot,
-                skill_syncer=skill_source,
             ),
             ui_executor=UiCaseNanobotExecutor(
                 nanobot_config=settings.nanobot,
-                skill_syncer=skill_source,
                 source_downloader=PlatformSourceArchiveDownloader(resolved_client),
             ),
             code_risk_executor=CodeRiskAnalysisNanobotExecutor(
                 nanobot_config=settings.nanobot,
-                skill_syncer=skill_source,
                 client=resolved_client,
                 timeout_seconds=settings.code_risk_analysis.gitlab_timeout_seconds,
             ),
@@ -165,18 +156,29 @@ def run_worker(
     resolved_task_runner = task_runner or build_task_runner(resolved_settings)
     resolved_logger = logger or logging.getLogger("testing_agent_ai_worker")
 
-    return run_worker_loop(
-        settings=resolved_settings,
-        poller=resolved_poller,
-        run_iteration=lambda: _run_worker_iteration(
+    max_concurrent_tasks = max(1, resolved_settings.worker.max_concurrent_tasks)
+    free_slots = threading.Semaphore(max_concurrent_tasks)
+    task_pool = ThreadPoolExecutor(max_workers=max_concurrent_tasks, thread_name_prefix="task-worker")
+
+    try:
+        return run_worker_loop(
+            settings=resolved_settings,
             poller=resolved_poller,
-            task_runner=resolved_task_runner,
-            printer=printer,
-        ),
-        sleep=sleep or time.sleep,
-        logger=resolved_logger,
-        max_iterations=max_iterations,
-    )
+            run_iteration=lambda: _run_worker_iteration(
+                poller=resolved_poller,
+                task_runner=resolved_task_runner,
+                printer=printer,
+                task_pool=task_pool,
+                free_slots=free_slots,
+            ),
+            sleep=sleep or time.sleep,
+            logger=resolved_logger,
+            max_iterations=max_iterations,
+        )
+    finally:
+        # 循环正常退出(run_once / 测试轮数上限)时排空在途任务;
+        # SIGTERM 直接终止进程,不会走到这里(ADR 0003)。
+        task_pool.shutdown(wait=True)
 
 
 def _apply_nanobot_runtime_environment(settings: Settings) -> None:
@@ -194,13 +196,25 @@ def _run_worker_iteration(
     poller: TaskPoller,
     task_runner: WorkerRunner,
     printer: Callable[[str], None],
-) -> int:
-    """执行单轮 worker 迭代。"""
+    task_pool: ThreadPoolExecutor,
+    free_slots: threading.Semaphore,
+) -> bool:
+    """执行单轮 worker 迭代,返回本轮是否认领到任务。认领后提交即返回。"""
 
-    task = poller.poll()
+    if not free_slots.acquire(blocking=False):
+        printer("worker at max concurrency, waiting for a free slot")
+        return False
+
+    try:
+        task = poller.poll()
+    except Exception:
+        free_slots.release()
+        raise
+
     if task is None:
+        free_slots.release()
         printer("no task claimed")
-        return 0
+        return False
 
     printer(
         "claimed task "
@@ -210,6 +224,17 @@ def _run_worker_iteration(
         f"sprint={task.sprint_id} "
         f"requirement={task.requirement_id}"
     )
-    task_runner.process_task(task)
-    return 0
+    try:
+        future = task_pool.submit(task_runner.process_task, task)
+    except Exception:
+        free_slots.release()
+        raise
+
+    def _release_slot(completed_future) -> None:
+        # 消费一次异常,避免「exception was never retrieved」告警。
+        completed_future.exception()
+        free_slots.release()
+
+    future.add_done_callback(_release_slot)
+    return True
 

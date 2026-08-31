@@ -16,7 +16,6 @@ from testing_agent_ai_worker.models.task import GitlabCredentials, Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
 from testing_agent_ai_worker.platform.http_client import PlatformHttpClient
-from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.platform.task_source import parse_gitlab_credentials
 from testing_agent_ai_worker.tasks.code_risk_analysis.gitlab_diffs import fetch_repo_diffs
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import run_skill_step
@@ -54,7 +53,7 @@ def validate_risk_report_yaml(text: str) -> str:
 
 
 def _default_skill_dir_checker(workspace: Path, skill_name: str) -> bool:
-    """检查项目技能空间同步后的技能目录是否存在。"""
+    """检查部署侧预置的技能目录是否就位(ADR 0002)。"""
 
     return (workspace / "skills" / skill_name).exists()
 
@@ -79,7 +78,6 @@ class CodeRiskAnalysisNanobotExecutor(TaskExecutor):
         nanobot_config: NanobotConfig,
         skill_runner: Callable[..., Any] = run_skill_step,
         skill_name: str = CODE_RISK_SKILL_NAME,
-        skill_syncer: ProjectSkillSyncer | None = None,
         credentials_fetcher: Callable[[Task], list[GitlabCredentials]] | None = None,
         diff_fetcher: Callable[..., list[Any]] | None = None,
         skill_dir_checker: Callable[[Path, str], bool] | None = None,
@@ -90,7 +88,6 @@ class CodeRiskAnalysisNanobotExecutor(TaskExecutor):
         self.runtime_paths = resolve_runtime_paths(nanobot_config)
         self.skill_runner = skill_runner
         self.skill_name = skill_name
-        self.skill_syncer = skill_syncer
         self.credentials_fetcher = credentials_fetcher or (
             _platform_credentials_fetcher(client) if client is not None else None
         )
@@ -133,13 +130,12 @@ class CodeRiskAnalysisNanobotExecutor(TaskExecutor):
             )
 
         workspace = resolve_task_workspace(self.nanobot_config, task)
-        self._sync_project_skills(task, workspace)
         if not self.skill_dir_checker(workspace, self.skill_name):
             return self._failed_result(
                 task,
                 started_at,
-                "项目未配置 code-risk-analysis 技能包",
-                remediation="在项目技能空间配置 code-risk-analysis 技能包",
+                "项目技能包未预置(缺少 code-risk-analysis)",
+                remediation="由部署侧按项目预置技能包后重新发起",
             )
 
         progress_callback(
@@ -296,7 +292,3 @@ class CodeRiskAnalysisNanobotExecutor(TaskExecutor):
             started_at=started_at,
             finished_at=datetime.now().astimezone(),
         )
-
-    def _sync_project_skills(self, task: Task, workspace: Path) -> None:
-        if self.skill_syncer is not None:
-            self.skill_syncer.sync_project_skills(project_id=task.project_id, workspace=workspace)

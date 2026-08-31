@@ -44,12 +44,6 @@ class ApiCaseExecutorTests(unittest.TestCase):
         captured: dict[str, object] = {}
         events: list[str] = []
 
-        class FakeSkillSyncer:
-            def sync_project_skills(self, *, project_id: str, workspace: Path) -> None:
-                events.append("sync")
-                self.project_id = project_id
-                self.workspace = workspace
-
         def fake_chain_runner(
             **kwargs,
         ) -> ChainRunResult:
@@ -62,13 +56,11 @@ class ApiCaseExecutorTests(unittest.TestCase):
                 generator_output="cases:\n  - name: login",
             )
 
-        skill_syncer = FakeSkillSyncer()
         executor = ApiCaseNanobotExecutor(
             nanobot_config=NanobotConfig(
                 runtime_root="D:/tmp/nanobot-runtime",
             ),
             chain_runner=fake_chain_runner,
-            skill_syncer=skill_syncer,
         )
 
         result = executor.execute(
@@ -90,9 +82,7 @@ class ApiCaseExecutorTests(unittest.TestCase):
             Path(str(captured["workspace"])),
             Path("D:/tmp/nanobot-runtime/workspaces/project-project-1"),
         )
-        self.assertEqual(events, ["sync", "chain"])
-        self.assertEqual(skill_syncer.project_id, "project-1")
-        self.assertEqual(skill_syncer.workspace, Path("D:/tmp/nanobot-runtime/workspaces/project-project-1"))
+        self.assertEqual(events, ["chain"])
         self.assertTrue(str(captured["config_path"]).endswith("nanobot.template.json"))
         self.assertEqual(captured["extractor_skill_name"], "openapi-test-config-extractor")
         self.assertEqual(captured["generator_skill_name"], "api-cases-yaml-generator")

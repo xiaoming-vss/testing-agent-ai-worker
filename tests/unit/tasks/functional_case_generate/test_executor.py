@@ -66,12 +66,6 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
         captured: dict[str, object] = {}
         events: list[str] = []
 
-        class FakeSkillSyncer:
-            def sync_project_skills(self, *, project_id: str, workspace: Path) -> None:
-                events.append("sync")
-                self.project_id = project_id
-                self.workspace = workspace
-
         requirement_analysis_json = json.dumps(
             {
                 "Platform_core_functions": ["登录", "项目管理"],
@@ -162,13 +156,11 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
                 detailed_cases_output=detailed_cases_json,
             )
 
-        skill_syncer = FakeSkillSyncer()
         executor = executor_cls(
             nanobot_config=NanobotConfig(
                 runtime_root="D:/tmp/nanobot-runtime",
             ),
             chain_runner=fake_chain_runner,
-            skill_syncer=skill_syncer,
         )
 
         result = executor.execute(
@@ -197,9 +189,7 @@ class FunctionalCaseExecutorTests(unittest.TestCase):
             Path(str(captured["workspace"])),
             Path("D:/tmp/nanobot-runtime/workspaces/project-project-1"),
         )
-        self.assertEqual(events, ["sync", "chain"])
-        self.assertEqual(skill_syncer.project_id, "project-1")
-        self.assertEqual(skill_syncer.workspace, Path("D:/tmp/nanobot-runtime/workspaces/project-project-1"))
+        self.assertEqual(events, ["chain"])
         self.assertTrue(str(captured["config_path"]).endswith("nanobot.template.json"))
         self.assertEqual(captured["analysis_skill_name"], "solution-test-point-analyzer")
         self.assertEqual(captured["case_name_skill_name"], "test-case-name-extractor")

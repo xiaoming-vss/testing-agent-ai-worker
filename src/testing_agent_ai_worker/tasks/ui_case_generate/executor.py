@@ -16,7 +16,6 @@ from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, T
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
-from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import run_skill_step
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.tasks.ui_case_generate.source_archive import SourceArchiveDownloader
@@ -83,14 +82,12 @@ class UiCaseNanobotExecutor(TaskExecutor):
         source_downloader: SourceArchiveDownloader,
         skill_runner=run_skill_step,
         skill_name: str = UI_CASE_SKILL_NAME,
-        skill_syncer: ProjectSkillSyncer | None = None,
     ) -> None:
         self.nanobot_config = nanobot_config
         self.runtime_paths = resolve_runtime_paths(nanobot_config)
         self.source_downloader = source_downloader
         self.skill_runner = skill_runner
         self.skill_name = skill_name
-        self.skill_syncer = skill_syncer
 
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult:
         if task.task_type != "ui_case_generate":
@@ -98,7 +95,6 @@ class UiCaseNanobotExecutor(TaskExecutor):
 
         try:
             workspace = resolve_task_workspace(self.nanobot_config, task)
-            self._sync_project_skills(task, workspace)
             source_root = self.source_downloader.download_and_extract(
                 source_archive_download_url=task.payload.source_archive_download_url,
                 task=task,
@@ -170,10 +166,6 @@ class UiCaseNanobotExecutor(TaskExecutor):
             error_message=error_message,
             details={"caseCount": case_count},
         )
-
-    def _sync_project_skills(self, task: Task, workspace: Path) -> None:
-        if self.skill_syncer is not None:
-            self.skill_syncer.sync_project_skills(project_id=task.project_id, workspace=workspace)
 
 
 def _validate_ui_cases_yaml(output_yaml: str) -> int:

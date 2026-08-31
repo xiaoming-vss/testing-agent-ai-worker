@@ -236,7 +236,8 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
         result = executor.execute(_task(), datetime.now().astimezone(), progresses.append)
 
         self.assertEqual(TaskStatus.FAILED, result.status)
-        self.assertIn("code-risk-analysis 技能包", result.error_message or "")
+        self.assertIn("项目技能包未预置", result.error_message or "")
+        self.assertIn("预置", result.remediation or "")
         self.assertEqual([], progresses)
         self.assertEqual([], skill_runner.calls)
 

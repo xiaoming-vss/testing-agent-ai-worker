@@ -11,7 +11,6 @@ from testing_agent_ai_worker.models.execution import TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
-from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import (
     FunctionalChainRunResult,
     run_functional_chain,
@@ -70,14 +69,12 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
         chain_runner=run_functional_chain,
         skill_runner=run_skill_step,
         detailed_batch_runner=run_functional_detailed_case_batches,
-        skill_syncer: ProjectSkillSyncer | None = None,
     ) -> None:
         self.nanobot_config = nanobot_config
         self.runtime_paths = resolve_runtime_paths(nanobot_config)
         self.chain_runner = chain_runner
         self.skill_runner = skill_runner
         self.detailed_batch_runner = detailed_batch_runner
-        self.skill_syncer = skill_syncer
 
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult | None:
         """执行功能测试任务主入口。"""
@@ -105,7 +102,6 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
             )
 
         workspace = resolve_task_workspace(self.nanobot_config, task)
-        self._sync_project_skills(task, workspace)
 
         with task_config_path(nanobot_config=self.nanobot_config, task=task) as config_path:
             self._log_execution_context(task, config_path=config_path, workspace=workspace)
@@ -226,10 +222,6 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
                 detailed_cases_json=EMPTY_CASES_JSON,
             )
         )
-
-    def _sync_project_skills(self, task: Task, workspace) -> None:
-        if self.skill_syncer is not None:
-            self.skill_syncer.sync_project_skills(project_id=task.project_id, workspace=workspace)
 
     def _log_execution_context(self, task: Task, *, config_path: str, workspace) -> None:
         credentials = task.payload.llm_credentials

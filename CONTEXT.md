@@ -12,6 +12,12 @@ _避免使用_：源码文件、下载包
 由 `ui_case_generate` 生成的可执行 UI 自动化用例；任务产物是 YAML 顶层列表，每一项均包含 `name`、`enabled`、`stepsJson` 和 `orderNo`。
 _避免使用_：UI 用例 JSON、测试步骤列表
 
+## 技能
+
+**技能预置**：
+部署侧按项目把技能包（SKILL.md）放进该项目的 workspace `skills/` 目录，作为任务执行的前置条件；worker 不下载、不更新技能。
+_避免使用_：技能同步（worker 侧下载机制，已移除）
+
 ## 代码风险分析
 
 **代码绑定**：

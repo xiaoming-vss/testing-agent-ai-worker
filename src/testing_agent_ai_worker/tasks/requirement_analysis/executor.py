@@ -12,7 +12,6 @@ from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, T
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
-from testing_agent_ai_worker.platform.skill_source import ProjectSkillSyncer
 from testing_agent_ai_worker.tasks.requirement_analysis.chain import (
     RequirementAnalysisChainRunResult,
     run_requirement_analysis_chain,
@@ -64,7 +63,6 @@ class RequirementAnalysisNanobotExecutor(TaskExecutor):
         first_skill_name: str = REQUIREMENT_ANALYSIS_FIRST_SKILL_NAME,
         second_skill_name: str = REQUIREMENT_ANALYSIS_SECOND_SKILL_NAME,
         third_skill_name: str = REQUIREMENT_ANALYSIS_THIRD_SKILL_NAME,
-        skill_syncer: ProjectSkillSyncer | None = None,
         source_downloader: RequirementSourceDownloader | None = None,
     ) -> None:
         self.nanobot_config = nanobot_config
@@ -74,7 +72,6 @@ class RequirementAnalysisNanobotExecutor(TaskExecutor):
         self.first_skill_name = first_skill_name
         self.second_skill_name = second_skill_name
         self.third_skill_name = third_skill_name
-        self.skill_syncer = skill_syncer
         self.source_downloader = source_downloader
 
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult | None:
@@ -103,7 +100,6 @@ class RequirementAnalysisNanobotExecutor(TaskExecutor):
             )
 
         workspace = resolve_task_workspace(self.nanobot_config, task)
-        self._sync_project_skills(task, workspace)
 
         with task_config_path(nanobot_config=self.nanobot_config, task=task) as config_path:
             checkpoint_stage = task.current_stage.strip()
@@ -258,10 +254,6 @@ class RequirementAnalysisNanobotExecutor(TaskExecutor):
                 "resultLength": len(output_yaml),
             },
         )
-
-    def _sync_project_skills(self, task: Task, workspace) -> None:
-        if self.skill_syncer is not None:
-            self.skill_syncer.sync_project_skills(project_id=task.project_id, workspace=workspace)
 
     def _download_source(self, task: Task, workspace) -> Path:
         if self.source_downloader is None:

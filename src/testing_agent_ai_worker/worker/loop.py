@@ -22,26 +22,28 @@ def run_worker_loop(
     *,
     settings: Settings,
     poller: TaskPoller,
-    run_iteration: Callable[[], int],
+    run_iteration: Callable[[], bool],
     sleep: Callable[[int], None] = time.sleep,
     logger: logging.Logger | None = None,
     max_iterations: int | None = None,
 ) -> int:
     """运行 worker 主循环。
 
-    `run_iteration` 由上层注入，方便在单元测试中替换成假实现。
+    `run_iteration` 由上层注入,返回本轮是否认领到任务,方便在单元测试中替换成假实现。
     """
 
     iterations = 0
     while True:
         try:
-            run_iteration()
+            claimed = run_iteration()
         except TaskSourceError as exc:
             if logger is not None:
                 logger.warning("platform task polling unavailable: %s", exc)
+            claimed = False
         iterations += 1
 
-        if settings.worker.run_once:
+        # run_once 语义是「认领一批并排空」:本轮没有认领(队列空或槽位满)即收尾。
+        if settings.worker.run_once and not claimed:
             return 0
         if max_iterations is not None and iterations >= max_iterations:
             return 0
