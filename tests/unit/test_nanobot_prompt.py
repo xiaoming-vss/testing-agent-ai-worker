@@ -2,7 +2,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -29,13 +28,13 @@ class NanobotPromptTests(unittest.TestCase):
     def test_build_skill_message_asks_nanobot_to_load_local_skill_first(self) -> None:
         self.assertEqual(
             build_skill_message(
-                skill_name="solution-test-point-analyzer",
+                skill_name="analyze-functional-requirements",
                 body_text="需求正文",
                 extra_instruction="只返回 JSON",
             ),
             "\n\n".join(
                 [
-                    "请先加载本地 skill：solution-test-point-analyzer，并严格遵循该 SKILL.md 的全部规则。",
+                    "请先加载本地 skill：analyze-functional-requirements，并严格遵循该 SKILL.md 的全部规则。",
                     "需求正文",
                     "只返回 JSON",
                 ]

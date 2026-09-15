@@ -4,7 +4,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -24,7 +23,10 @@ from testing_agent_ai_worker.tasks.code_risk_analysis.executor import (
     CODE_RISK_SKILL_NAME,
     CodeRiskAnalysisNanobotExecutor,
 )
-from testing_agent_ai_worker.tasks.code_risk_analysis.gitlab_diffs import GitlabDiffError, GitlabRepoDiff
+from testing_agent_ai_worker.tasks.code_risk_analysis.gitlab_diffs import (
+    GitlabDiffError,
+    GitlabRepoDiff,
+)
 
 
 def _task(
@@ -52,7 +54,17 @@ def _task(
         requirement_id="req-1",
         requirement_input=requirement,
         bindings=bindings
-        or [RepositoryBinding.model_validate({"bindingId": "b-1", "repositoryId": "repo-1", "branch": "feat/login", "baselineRef": "refs/heads/master", "connectionId": "conn-1"})],
+        or [
+            RepositoryBinding.model_validate(
+                {
+                    "bindingId": "b-1",
+                    "repositoryId": "repo-1",
+                    "branch": "feat/login",
+                    "baselineRef": "refs/heads/master",
+                    "connectionId": "conn-1",
+                }
+            )
+        ],
         existing_tests=existing_tests or ExistingTestCases(),
         gitlab_credentials_url="/internal/ai-worker/tasks/task-1/gitlab-credentials",
         payload=TaskPayload(openapi_content="", extra_instruction=""),
@@ -82,7 +94,9 @@ def _existing_tests() -> ExistingTestCases:
                     "name": "登录成功返回 token",
                     "method": "POST",
                     "urlTemplate": "/api/login",
-                    "assertRules": [{"name": "code=200", "targetExpr": "code", "expectedValue": 200}],
+                    "assertRules": [
+                        {"name": "code=200", "targetExpr": "code", "expectedValue": 200}
+                    ],
                     "lastRun": {"status": "passed", "finishedAt": "2026-08-20T10:00:00+08:00"},
                 }
             ],
@@ -92,7 +106,7 @@ def _existing_tests() -> ExistingTestCases:
                     "suiteName": "登录页面",
                     "caseId": "u-case-1",
                     "name": "登录按钮可见",
-                    "stepsJson": "[{\"action\":\"click\"}]",
+                    "stepsJson": '[{"action":"click"}]',
                     "lastRun": {"status": "failed", "finishedAt": "2026-08-21T10:00:00+08:00"},
                 }
             ],
@@ -109,7 +123,9 @@ def _repo_diff() -> GitlabRepoDiff:
         files_changed=1,
         additions=1,
         deletions=1,
-        diff_files=[{"old_path": "src/a.py", "new_path": "src/a.py", "diff": "@@ -1 +1 @@\n-x\n+y\n"}],
+        diff_files=[
+            {"old_path": "src/a.py", "new_path": "src/a.py", "diff": "@@ -1 +1 @@\n-x\n+y\n"}
+        ],
     )
 
 
@@ -133,11 +149,20 @@ class _FakeCredentialsFetcher:
         self.calls += 1
         if self.fail:
             raise RuntimeError("凭证接口不可用")
-        return [GitlabCredentials(connection_id="conn-1", base_url="https://gitlab.example.com", access_token=self.token, repository_ids=["repo-1"])]
+        return [
+            GitlabCredentials(
+                connection_id="conn-1",
+                base_url="https://gitlab.example.com",
+                access_token=self.token,
+                repository_ids=["repo-1"],
+            )
+        ]
 
 
 class _FakeDiffFetcher:
-    def __init__(self, *, results: list[GitlabRepoDiff] | None = None, fail: GitlabDiffError | None = None) -> None:
+    def __init__(
+        self, *, results: list[GitlabRepoDiff] | None = None, fail: GitlabDiffError | None = None
+    ) -> None:
         self.results = results or [_repo_diff()]
         self.fail = fail
         self.calls: list[dict[str, Any]] = []
@@ -160,7 +185,10 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
     ) -> CodeRiskAnalysisNanobotExecutor:
         # 单测环境无实际 skills 目录,默认视为技能包存在;专门测缺失场景时传 False。
         if skill_checker is None:
-            skill_checker = lambda _workspace, _name: True
+
+            def skill_checker(_workspace, _name):
+                return True
+
         return CodeRiskAnalysisNanobotExecutor(
             nanobot_config=NanobotConfig(runtime_root=str(Path("runtime/code-risk-analysis"))),
             skill_runner=skill_runner,
@@ -174,7 +202,9 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
         executor = self._executor(skill_runner=skill_runner)
         progresses = []
 
-        result = executor.execute(_task(existing_tests=_existing_tests()), datetime.now().astimezone(), progresses.append)
+        result = executor.execute(
+            _task(existing_tests=_existing_tests()), datetime.now().astimezone(), progresses.append
+        )
 
         self.assertEqual(TaskStatus.SUCCESS, result.status)
         self.assertEqual(2, len(progresses))
@@ -217,7 +247,9 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
 
     def test_execute_fails_when_credentials_unavailable_before_progress(self) -> None:
         skill_runner = _RecordingSkillRunner()
-        executor = self._executor(skill_runner=skill_runner, fetcher=_FakeCredentialsFetcher(fail=True))
+        executor = self._executor(
+            skill_runner=skill_runner, fetcher=_FakeCredentialsFetcher(fail=True)
+        )
         progresses = []
 
         result = executor.execute(_task(), datetime.now().astimezone(), progresses.append)
@@ -230,7 +262,9 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
 
     def test_execute_fails_when_skill_package_missing(self) -> None:
         skill_runner = _RecordingSkillRunner()
-        executor = self._executor(skill_runner=skill_runner, skill_checker=lambda _workspace, _name: False)
+        executor = self._executor(
+            skill_runner=skill_runner, skill_checker=lambda _workspace, _name: False
+        )
         progresses = []
 
         result = executor.execute(_task(), datetime.now().astimezone(), progresses.append)
@@ -245,7 +279,9 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
         skill_runner = _RecordingSkillRunner()
         executor = self._executor(
             skill_runner=skill_runner,
-            diff_fetcher=_FakeDiffFetcher(fail=GitlabDiffError("仓库 repo-2 基线解析失败: 已删除(请手工指定基线)")),
+            diff_fetcher=_FakeDiffFetcher(
+                fail=GitlabDiffError("仓库 repo-2 基线解析失败: 已删除(请手工指定基线)")
+            ),
         )
         progresses = []
 
@@ -276,7 +312,9 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
         self.assertIn("不是有效 YAML 对象", result.error_message or "")
 
     def test_execute_strips_yaml_fence_before_validation_and_passes_text_through(self) -> None:
-        skill_runner = _RecordingSkillRunner(output="```yaml\nanalyzedAt: '2026-08-27T10:00:00+08:00'\nrisks: []\n```")
+        skill_runner = _RecordingSkillRunner(
+            output="```yaml\nanalyzedAt: '2026-08-27T10:00:00+08:00'\nrisks: []\n```"
+        )
         executor = self._executor(skill_runner=skill_runner)
 
         result = executor.execute(_task(), datetime.now().astimezone(), lambda _p: None)
@@ -286,7 +324,9 @@ class CodeRiskAnalysisExecutorTests(unittest.TestCase):
 
     def test_execute_never_leaks_access_token_into_input_output_or_summary(self) -> None:
         skill_runner = _RecordingSkillRunner()
-        executor = self._executor(skill_runner=skill_runner, fetcher=_FakeCredentialsFetcher(token="secret-token-1"))
+        executor = self._executor(
+            skill_runner=skill_runner, fetcher=_FakeCredentialsFetcher(token="secret-token-1")
+        )
         progresses = []
 
         result = executor.execute(

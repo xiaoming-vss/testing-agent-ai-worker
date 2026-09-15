@@ -10,12 +10,12 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+import testing_agent_ai_worker.worker.executor as executor_module
 from testing_agent_ai_worker.config.loader import load_settings
 from testing_agent_ai_worker.config.models import (
     CodeRiskAnalysisConfig,
@@ -29,7 +29,6 @@ from testing_agent_ai_worker.logging.setup import setup_logging
 from testing_agent_ai_worker.main import build_task_runner, run_poll_once, run_worker
 from testing_agent_ai_worker.models.task import Task, TaskPayload
 from testing_agent_ai_worker.platform.errors import TaskSourceError
-import testing_agent_ai_worker.worker.executor as executor_module
 
 
 class _FakePoller:
@@ -369,7 +368,11 @@ class WorkerMainTests(unittest.TestCase):
 
     def test_run_worker_claims_up_to_concurrency_limit_without_waiting_for_completion(self) -> None:
         poller = _SequenceThenIdlePoller(
-            [self._make_simple_task("task-a"), self._make_simple_task("task-b"), self._make_simple_task("task-c")]
+            [
+                self._make_simple_task("task-a"),
+                self._make_simple_task("task-b"),
+                self._make_simple_task("task-c"),
+            ]
         )
         release_tasks = threading.Event()
         task_runner = _GatedTaskRunner(release_tasks)
@@ -381,7 +384,9 @@ class WorkerMainTests(unittest.TestCase):
                 results.append(
                     run_worker(
                         settings=Settings(
-                            worker=WorkerConfig(poll_interval_seconds=0, run_once=False, max_concurrent_tasks=2),
+                            worker=WorkerConfig(
+                                poll_interval_seconds=0, run_once=False, max_concurrent_tasks=2
+                            ),
                             platform=PlatformConfig(base_url="https://platform.example.com"),
                             nanobot=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
                             logging=LoggingConfig(),
@@ -423,7 +428,9 @@ class WorkerMainTests(unittest.TestCase):
                 results.append(
                     run_worker(
                         settings=Settings(
-                            worker=WorkerConfig(poll_interval_seconds=0, run_once=True, max_concurrent_tasks=2),
+                            worker=WorkerConfig(
+                                poll_interval_seconds=0, run_once=True, max_concurrent_tasks=2
+                            ),
                             platform=PlatformConfig(base_url="https://platform.example.com"),
                             nanobot=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
                             logging=LoggingConfig(),
@@ -452,7 +459,11 @@ class WorkerMainTests(unittest.TestCase):
         release_tasks = threading.Event()
         task_runner = _GatedTaskRunner(release_tasks)
         poller = _SequenceThenIdlePoller(
-            [self._make_simple_task("task-a"), self._make_simple_task("task-b"), self._make_simple_task("task-c")]
+            [
+                self._make_simple_task("task-a"),
+                self._make_simple_task("task-b"),
+                self._make_simple_task("task-c"),
+            ]
         )
         results: list[int] = []
         output = io.StringIO()
@@ -462,7 +473,9 @@ class WorkerMainTests(unittest.TestCase):
                 results.append(
                     run_worker(
                         settings=Settings(
-                            worker=WorkerConfig(poll_interval_seconds=0, run_once=True, max_concurrent_tasks=2),
+                            worker=WorkerConfig(
+                                poll_interval_seconds=0, run_once=True, max_concurrent_tasks=2
+                            ),
                             platform=PlatformConfig(base_url="https://platform.example.com"),
                             nanobot=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
                             logging=LoggingConfig(),
@@ -507,13 +520,14 @@ class WorkerMainTests(unittest.TestCase):
         poller = _SequenceThenIdlePoller(
             [self._make_simple_task("task-bad"), self._make_simple_task("task-good")]
         )
-        results: list[int] = []
         output = io.StringIO()
 
         with redirect_stdout(output):
             exit_code = run_worker(
                 settings=Settings(
-                    worker=WorkerConfig(poll_interval_seconds=0, run_once=False, max_concurrent_tasks=2),
+                    worker=WorkerConfig(
+                        poll_interval_seconds=0, run_once=False, max_concurrent_tasks=2
+                    ),
                     platform=PlatformConfig(base_url="https://platform.example.com"),
                     nanobot=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
                     logging=LoggingConfig(),

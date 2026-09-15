@@ -19,7 +19,6 @@ from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.task import LlmCredentials, Task
 from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths
 
-
 DEFAULT_TEMPLATE_PATH = Path(__file__).resolve().parents[3] / "config" / "nanobot.template.json"
 
 

@@ -14,7 +14,10 @@ from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import GitlabCredentials, Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
-from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
+from testing_agent_ai_worker.nanobot_runtime.paths import (
+    resolve_runtime_paths,
+    resolve_task_workspace,
+)
 from testing_agent_ai_worker.platform.http_client import PlatformHttpClient
 from testing_agent_ai_worker.platform.task_source import parse_gitlab_credentials
 from testing_agent_ai_worker.tasks.code_risk_analysis.gitlab_diffs import fetch_repo_diffs

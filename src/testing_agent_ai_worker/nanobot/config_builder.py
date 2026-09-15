@@ -8,7 +8,6 @@ from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime import config_builder as _runtime
 
-
 DEFAULT_TEMPLATE_PATH = _runtime.DEFAULT_TEMPLATE_PATH
 _load_template_config = _runtime._load_template_config
 _overlay_llm_credentials = _runtime._overlay_llm_credentials

@@ -3,7 +3,6 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -81,7 +80,9 @@ class WorkerTaskDispatcherCodeRiskTests(unittest.TestCase):
         code_risk_executor = _FakeExecutor()
         dispatcher = self._dispatcher(code_risk_executor=code_risk_executor)
 
-        dispatcher.execute(self._task("test_report_generate"), datetime.now().astimezone(), lambda _p: None)
+        dispatcher.execute(
+            self._task("test_report_generate"), datetime.now().astimezone(), lambda _p: None
+        )
 
         self.assertEqual(0, code_risk_executor.calls)
 

@@ -3,18 +3,17 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from testing_agent_ai_worker.config.models import Settings
+from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.platform.task_source import (
     HttpClaimTaskSource,
     parse_gitlab_credentials,
 )
-from testing_agent_ai_worker.models.task import Task
 
 
 def _snapshot_missing_new_fields() -> dict[str, Any]:
@@ -28,7 +27,7 @@ def _snapshot_missing_new_fields() -> dict[str, Any]:
             "sprintId": "sprint-1",
             "requirementId": "req-1",
             "sourceType": "openapi",
-            "sourceContent": "{\"openapi\":\"3.0.0\"}",
+            "sourceContent": '{"openapi":"3.0.0"}',
             "instruction": "",
         }
     }
@@ -138,7 +137,13 @@ def _risk_snapshot(*, fields_inside_run: bool = False) -> dict[str, Any]:
                 "method": "POST",
                 "urlTemplate": "/api/login",
                 "assertRules": [
-                    {"name": "code=200", "assertSource": "body", "targetExpr": "code", "comparator": "eq", "expectedValue": 200}
+                    {
+                        "name": "code=200",
+                        "assertSource": "body",
+                        "targetExpr": "code",
+                        "comparator": "eq",
+                        "expectedValue": 200,
+                    }
                 ],
                 "lastRun": {"status": "passed", "finishedAt": "2026-08-20T10:00:00+08:00"},
             }
@@ -149,7 +154,7 @@ def _risk_snapshot(*, fields_inside_run: bool = False) -> dict[str, Any]:
                 "suiteName": "登录页面",
                 "caseId": "u-case-1",
                 "name": "登录按钮可见",
-                "stepsJson": "[{\"action\":\"click\"}]",
+                "stepsJson": '[{"action":"click"}]',
                 "lastRun": {"status": "failed", "finishedAt": "2026-08-21T10:00:00+08:00"},
             }
         ],
@@ -290,9 +295,24 @@ class GitlabCredentialsParsingTests(unittest.TestCase):
             "taskId": "worker-task-1",
             "bindings": [],
             "credentials": [
-                {"connectionId": "conn-1", "baseUrl": "https://gitlab.example.com", "accessToken": "token-1", "repositoryIds": ["repo-1"]},
-                {"connectionId": "conn-1", "baseUrl": "https://gitlab.example.com", "accessToken": "token-1", "repositoryIds": ["repo-2"]},
-                {"connectionId": "conn-2", "baseUrl": "https://gitlab.example.com", "accessToken": "token-2", "repositoryIds": ["repo-3"]},
+                {
+                    "connectionId": "conn-1",
+                    "baseUrl": "https://gitlab.example.com",
+                    "accessToken": "token-1",
+                    "repositoryIds": ["repo-1"],
+                },
+                {
+                    "connectionId": "conn-1",
+                    "baseUrl": "https://gitlab.example.com",
+                    "accessToken": "token-1",
+                    "repositoryIds": ["repo-2"],
+                },
+                {
+                    "connectionId": "conn-2",
+                    "baseUrl": "https://gitlab.example.com",
+                    "accessToken": "token-2",
+                    "repositoryIds": ["repo-3"],
+                },
             ],
         }
 
@@ -309,8 +329,18 @@ class GitlabCredentialsParsingTests(unittest.TestCase):
         payload = {
             "taskId": "worker-task-1",
             "credentials": [
-                {"connectionId": "", "baseUrl": "https://gitlab.example.com", "accessToken": "token-a", "repositoryIds": ["repo-1"]},
-                {"connectionId": "", "baseUrl": "https://gitlab.example.com", "accessToken": "token-b", "repositoryIds": ["repo-2"]},
+                {
+                    "connectionId": "",
+                    "baseUrl": "https://gitlab.example.com",
+                    "accessToken": "token-a",
+                    "repositoryIds": ["repo-1"],
+                },
+                {
+                    "connectionId": "",
+                    "baseUrl": "https://gitlab.example.com",
+                    "accessToken": "token-b",
+                    "repositoryIds": ["repo-2"],
+                },
             ],
         }
 
@@ -332,6 +362,7 @@ class CodeRiskAnalysisConfigTests(unittest.TestCase):
 
     def test_gitlab_timeout_seconds_overridable_via_toml(self) -> None:
         import tempfile
+
         from testing_agent_ai_worker.config.loader import load_settings
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:

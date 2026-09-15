@@ -29,8 +29,10 @@ def build_progress(
         run_id=task.run_id,
         current_stage=current_stage,
         stage_status=stage_status,
-        intermediate_json_text=config_json,
-        output_yaml=detailed_cases_json,
+        intermediate_json_text=""
+        if current_stage == "detailed_cases" and stage_status == "running"
+        else config_json,
+        output_yaml="",
         result_summary_json=build_result_summary_json(
             task=task,
             status="running",

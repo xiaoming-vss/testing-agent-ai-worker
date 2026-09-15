@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -179,7 +178,9 @@ class ResultSinkTests(unittest.TestCase):
             )
         )
 
-        self.assertEqual("请手工指定基线 / 检查 PAT", client.post_calls[0]["json_body"]["remediation"])
+        self.assertEqual(
+            "请手工指定基线 / 检查 PAT", client.post_calls[0]["json_body"]["remediation"]
+        )
 
 
 if __name__ == "__main__":

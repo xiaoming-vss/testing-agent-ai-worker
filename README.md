@@ -33,9 +33,25 @@ payloads. Shared nanobot config, path, and prompt helpers live under
 Create or refresh the environment with `uv`, then run tests from the local
 virtual environment:
 
+Nanobot is pinned in `pyproject.toml` and `uv.lock` to upstream commit
+`b55b76d75574d74c1ff5356bace3b76ad12ef399` (version metadata: `0.3.0`).
+This includes [PR #5056](https://github.com/HKUDS/nanobot/pull/5056), which
+preserves the complete response after output-length recovery. The PyPI `0.3.0`
+wheel predates that fix; install with `uv sync --locked` to use the pinned source.
+Git is required. For SDK-only installations without Node/Bun, set
+`NANOBOT_SKIP_WEBUI_BUILD=1` before syncing; the Docker builder sets this already.
+Restart the worker after upgrading so it loads the updated SDK.
+
 ```powershell
 $env:PYTHONPATH = "src"
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Code checks (rules and formatter settings are defined in `pyproject.toml`):
+
+```sh
+uv run ruff check src tests
+uv run ruff format --check src tests
 ```
 
 Run the minimal nanobot SDK demo:
@@ -48,8 +64,7 @@ $env:PYTHONPATH = "src"
 Run the two-step nanobot chain demo:
 
 ```powershell
-$env:NANOBOT_OPENAPI_JSON_PATH = "D:\tmp\openapi.json"
-uv run testing-agent-ai-chain-demo
+uv run testing-agent-ai-chain-demo --openapi-json-path "D:\tmp\openapi.json"
 ```
 
 Run the worker with the checked-in `config/worker.toml`:
@@ -132,9 +147,9 @@ The worker also supports `functional_case_generate` for `source_type=text` and
 `source_type=word` through a three-step nanobot chain. In both cases it uses
 `sourceContent` as the text input and does not download a source file:
 
-- `solution-test-point-analyzer`
-- `test-case-name-extractor`
-- `detailed-test-case-generator`
+- `analyze-functional-requirements`
+- `generate-solution-test-points`
+- `generate-solution-test-cases`
 
 For `functional_case_generate` text tasks, the worker now:
 

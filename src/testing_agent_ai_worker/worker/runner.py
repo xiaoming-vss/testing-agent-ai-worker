@@ -21,7 +21,6 @@ from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.services.result_service import ResultService
 from testing_agent_ai_worker.worker.lifecycle import WorkerLifecycle
 
-
 LOGGER = logging.getLogger(__name__)
 
 

@@ -51,6 +51,7 @@ class PlatformClaimTask(BaseModel):
         validation_alias=AliasChoices("dailyMetrics", "daily_metrics"),
     )
 
+
 class PlatformLlmCredentials(BaseModel):
     base_url: str = Field(validation_alias=AliasChoices("baseUrl", "base_url"))
     model_id: str = Field(validation_alias=AliasChoices("modelId", "model_id"))
@@ -80,8 +81,7 @@ class PlatformSnapshotRun(BaseModel):
         validation_alias=AliasChoices("sourceType", "source_type"),
     )
     source_content: str = Field(
-        default="",
-        validation_alias=AliasChoices("sourceContent", "source_content")
+        default="", validation_alias=AliasChoices("sourceContent", "source_content")
     )
     document_download_url: str = Field(
         default="",
@@ -128,6 +128,7 @@ class PlatformSnapshotRun(BaseModel):
         validation_alias=AliasChoices("gitlabCredentialsUrl", "gitlab_credentials_url"),
     )
 
+
 class PlatformSnapshotResponse(BaseModel):
     run: PlatformSnapshotRun
     task_type: str = Field(
@@ -162,6 +163,7 @@ class PlatformSnapshotResponse(BaseModel):
         validation_alias=AliasChoices("gitlabCredentialsUrl", "gitlab_credentials_url"),
     )
 
+
 class PlatformGitlabCredentials(BaseModel):
     connection_id: str = Field(
         default="",
@@ -182,5 +184,3 @@ class PlatformGitlabCredentialsResponse(BaseModel):
     task_id: str = Field(default="", validation_alias=AliasChoices("taskId", "task_id"))
     bindings: list[dict[str, object]] = Field(default_factory=list)
     credentials: list[PlatformGitlabCredentials] = Field(default_factory=list)
-
-

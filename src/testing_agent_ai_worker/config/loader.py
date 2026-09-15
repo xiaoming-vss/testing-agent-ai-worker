@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import os
+import tomllib
 from pathlib import Path
 from typing import Any
 
-import tomllib
-
 from testing_agent_ai_worker.config.models import Settings
-
 
 DEFAULT_CONFIG_PATH = Path("config/worker.toml")
 

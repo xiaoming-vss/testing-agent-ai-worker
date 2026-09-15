@@ -10,6 +10,7 @@ from testing_agent_ai_worker.models.execution import TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import (
     _build_functional_analysis_instruction,
+    _build_functional_case_names_body,
     _build_functional_case_names_instruction,
 )
 from testing_agent_ai_worker.tasks.functional_case_generate.summary import (
@@ -17,7 +18,6 @@ from testing_agent_ai_worker.tasks.functional_case_generate.summary import (
     build_progress,
     build_result_summary_json,
 )
-
 
 EMPTY_CASES_JSON = '{"cases":[]}'
 
@@ -35,16 +35,32 @@ def execute_checkpoint_task(
     """执行 checkpoint 模式的阶段恢复。"""
 
     stage = task.current_stage.strip()
+    try:
+        config = _read_checkpoint_config(task)
+    except ValueError:
+        if stage != "requirement_analysis":
+            raise
+        # Initial analysis historically ignores malformed legacy config.
+        config = {}
+    revision = _optional_config_json_text(config, "revisionInstruction").strip()
+
+    def revision_input(source: str, field: str) -> str:
+        if not revision:
+            return source
+        current = _require_config_json_text(config, field, stage)
+        return f"{source}\n\n【当前阶段产物】\n{current}\n\n【本轮优化要求】\n{revision}\n请输出优化后的完整阶段产物。"
 
     if stage == "requirement_analysis":
         requirement_analysis_json = _resolve_text_result(
             skill_runner(
-                input_text=task.payload.source_content,
+                input_text=revision_input(task.payload.source_content, "requirementAnalysis"),
                 session_key=task.nanobot_session_key,
-                skill_name="solution-test-point-analyzer",
+                skill_name="analyze-functional-requirements",
                 config_path=config_path,
                 workspace=str(workspace),
-                extra_instruction=_build_functional_analysis_instruction(task.payload.extra_instruction),
+                extra_instruction=_build_functional_analysis_instruction(
+                    task.payload.extra_instruction
+                ),
             )
         )
         progress_callback(
@@ -59,17 +75,24 @@ def execute_checkpoint_task(
         )
         return None
 
-    config = _read_checkpoint_config(task)
     requirement_analysis_json = _require_config_json_text(config, "requirementAnalysis", stage)
     if stage == "case_names":
         case_names_json = _resolve_text_result(
             skill_runner(
-                input_text=requirement_analysis_json,
+                input_text=revision_input(
+                    _build_functional_case_names_body(
+                        source_text=task.payload.source_content,
+                        analysis_json=requirement_analysis_json,
+                    ),
+                    "caseNames",
+                ),
                 session_key=task.nanobot_session_key,
-                skill_name="test-case-name-extractor",
+                skill_name="generate-solution-test-points",
                 config_path=config_path,
                 workspace=str(workspace),
-                extra_instruction=_build_functional_case_names_instruction(task.payload.extra_instruction),
+                extra_instruction=_build_functional_case_names_instruction(
+                    task.payload.extra_instruction
+                ),
             )
         )
         progress_callback(
@@ -88,21 +111,34 @@ def execute_checkpoint_task(
         case_names_json = _require_config_json_text(config, "caseNames", stage)
         detailed_cases_json = _resolve_text_result(
             detailed_batch_runner(
+                source_text=task.payload.source_content,
                 requirement_analysis_json=requirement_analysis_json,
                 case_names_json=case_names_json,
                 session_key=task.nanobot_session_key,
-                skill_name="detailed-test-case-generator",
+                skill_name="generate-solution-test-cases",
                 config_path=config_path,
                 workspace=str(workspace),
                 extra_instruction=task.payload.extra_instruction,
-                on_progress=lambda accumulated_result, _model_name, _index, _total: progress_callback(
-                    build_progress(
-                        task,
-                        current_stage=stage,
-                        stage_status="running",
-                        requirement_analysis_json=requirement_analysis_json,
-                        case_names_json=case_names_json,
-                        detailed_cases_json=accumulated_result,
+                **(
+                    {
+                        "current_cases_json": _require_config_json_text(
+                            config, "resultYaml", stage
+                        ),
+                        "revision_instruction": revision,
+                    }
+                    if revision
+                    else {}
+                ),
+                on_progress=lambda accumulated_result, _model_name, _index, _total: (
+                    progress_callback(
+                        build_progress(
+                            task,
+                            current_stage=stage,
+                            stage_status="running",
+                            requirement_analysis_json=requirement_analysis_json,
+                            case_names_json=case_names_json,
+                            detailed_cases_json=accumulated_result,
+                        )
                     )
                 ),
             )

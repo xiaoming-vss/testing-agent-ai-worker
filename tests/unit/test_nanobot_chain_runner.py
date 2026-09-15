@@ -3,6 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 
+from tests.unit.tasks.functional_case_generate.fixtures import analysis, case
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -72,19 +73,32 @@ class NanobotChainRunnerTests(unittest.IsolatedAsyncioTestCase):
             [call["session_key"] for call in factory.bot.calls],
             ["demo:chain", "demo:chain"],
         )
-        self.assertIn("请先加载本地 skill：openapi-test-config-extractor", factory.bot.calls[0]["message"])
+        self.assertIn(
+            "请先加载本地 skill：openapi-test-config-extractor", factory.bot.calls[0]["message"]
+        )
         self.assertIn('{"openapi":"3.0.0"}', factory.bot.calls[0]["message"])
         self.assertIn("帮我生成登录、项目增删改查的用例", factory.bot.calls[0]["message"])
-        self.assertIn("符合 openapi-test-config-extractor skill 要求的接口配置 JSON", factory.bot.calls[0]["message"])
-        self.assertIn("不要返回测试用例、meta/config/testCases 结构", factory.bot.calls[0]["message"])
-        self.assertIn("请先加载本地 skill：api-cases-yaml-generator", factory.bot.calls[1]["message"])
+        self.assertIn(
+            "符合 openapi-test-config-extractor skill 要求的接口配置 JSON",
+            factory.bot.calls[0]["message"],
+        )
+        self.assertIn(
+            "不要返回测试用例、meta/config/testCases 结构", factory.bot.calls[0]["message"]
+        )
+        self.assertIn(
+            "请先加载本地 skill：api-cases-yaml-generator", factory.bot.calls[1]["message"]
+        )
         self.assertIn("step one result", factory.bot.calls[1]["message"])
         self.assertIn("帮我生成登录、项目增删改查的用例", factory.bot.calls[1]["message"])
-        self.assertIn("符合 api-cases-yaml-generator skill 要求的 YAML 内容", factory.bot.calls[1]["message"])
+        self.assertIn(
+            "符合 api-cases-yaml-generator skill 要求的 YAML 内容", factory.bot.calls[1]["message"]
+        )
         self.assertIn("不要返回 JSON、meta/config/testCases 结构", factory.bot.calls[1]["message"])
         self.assertNotIn("请直接返回 JSON 内容", factory.bot.calls[1]["message"])
 
-    async def test_run_functional_chain_uses_three_skill_names_and_reuses_one_session_key(self) -> None:
+    async def test_run_functional_chain_uses_three_skill_names_and_reuses_one_session_key(
+        self,
+    ) -> None:
         run_functional_chain = getattr(runner_module, "run_functional_chain", None)
         self.assertIsNotNone(run_functional_chain)
         if run_functional_chain is None:
@@ -98,10 +112,10 @@ class NanobotChainRunnerTests(unittest.IsolatedAsyncioTestCase):
         )
         factory = _FakeFactory(
             [
-                "analysis result",
+                json.dumps(analysis(), ensure_ascii=False, separators=(",", ":")),
                 case_names_json,
-                '{"cases":[{"case_title":"验证登录成功"}]}',
-                '{"cases":[{"case_title":"验证项目新增成功"}]}',
+                json.dumps({"cases": [case("验证登录成功")]}),
+                json.dumps({"cases": [case("验证项目新增成功", "项目管理")]}),
             ]
         )
         stage_outputs: list[str] = []
@@ -112,25 +126,31 @@ class NanobotChainRunnerTests(unittest.IsolatedAsyncioTestCase):
             session_key="demo:functional",
             config_path="D:/tmp/config.json",
             workspace="D:/tmp/workspace",
-            analysis_skill_name="solution-test-point-analyzer",
-            case_name_skill_name="test-case-name-extractor",
-            detailed_case_skill_name="detailed-test-case-generator",
+            analysis_skill_name="analyze-functional-requirements",
+            case_name_skill_name="generate-solution-test-points",
+            detailed_case_skill_name="generate-solution-test-cases",
             extra_instruction="只保留核心业务场景",
             on_requirement_analysis_result=stage_outputs.append,
             on_case_names_result=stage_outputs.append,
-            on_detailed_cases_progress=lambda accumulated_result, model_name, index, total: batch_progress.append(
-                (accumulated_result, model_name, index, total)
+            on_detailed_cases_progress=lambda accumulated_result, model_name, index, total: (
+                batch_progress.append((accumulated_result, model_name, index, total))
             ),
             from_config=factory,
         )
 
-        self.assertEqual(result.requirement_analysis_output, "analysis result")
-        self.assertEqual(result.case_names_output, case_names_json)
+        self.assertEqual(
+            result.requirement_analysis_output,
+            json.dumps(analysis(), ensure_ascii=False, separators=(",", ":")),
+        )
+        self.assertEqual(json.loads(result.case_names_output), json.loads(case_names_json))
         self.assertEqual(
             json.loads(result.detailed_cases_output),
-            {"cases": [{"case_title": "验证登录成功"}, {"case_title": "验证项目新增成功"}]},
+            {"cases": [case("验证登录成功"), case("验证项目新增成功", "项目管理")]},
         )
-        self.assertEqual(stage_outputs, ["analysis result", case_names_json])
+        self.assertEqual(
+            [json.loads(value) for value in stage_outputs],
+            [analysis(), json.loads(case_names_json)],
+        )
         self.assertEqual(len(batch_progress), 2)
         self.assertEqual(batch_progress[0][1:], ("登录", 1, 2))
         self.assertEqual(batch_progress[1][1:], ("项目管理", 2, 2))
@@ -138,26 +158,50 @@ class NanobotChainRunnerTests(unittest.IsolatedAsyncioTestCase):
             [call["session_key"] for call in factory.bot.calls],
             ["demo:functional", "demo:functional", "demo:functional", "demo:functional"],
         )
-        self.assertIn("请先加载本地 skill：solution-test-point-analyzer", factory.bot.calls[0]["message"])
+        self.assertIn(
+            "请先加载本地 skill：analyze-functional-requirements", factory.bot.calls[0]["message"]
+        )
         self.assertIn("请基于登录和项目管理需求生成功能测试用例", factory.bot.calls[0]["message"])
-        self.assertIn("请先加载本地 skill：test-case-name-extractor", factory.bot.calls[1]["message"])
-        self.assertIn("analysis result", factory.bot.calls[1]["message"])
-        self.assertIn("请先加载本地 skill：detailed-test-case-generator", factory.bot.calls[2]["message"])
-        self.assertIn("analysis result", factory.bot.calls[2]["message"])
+        self.assertIn(
+            "请先加载本地 skill：generate-solution-test-points", factory.bot.calls[1]["message"]
+        )
+        self.assertIn(
+            json.dumps(analysis(), ensure_ascii=False, separators=(",", ":")),
+            factory.bot.calls[1]["message"],
+        )
+        self.assertIn(
+            "请先加载本地 skill：generate-solution-test-cases", factory.bot.calls[2]["message"]
+        )
+        self.assertIn(
+            json.dumps(analysis(), ensure_ascii=False, separators=(",", ":")),
+            factory.bot.calls[2]["message"],
+        )
         self.assertIn('"model": "登录"', factory.bot.calls[2]["message"])
-        self.assertIn("请直接返回包含 cases 数组的详细测试用例 JSON", factory.bot.calls[2]["message"])
-        self.assertIn("请先加载本地 skill：detailed-test-case-generator", factory.bot.calls[3]["message"])
+        self.assertIn(
+            "请直接返回包含 cases 数组的详细测试用例 JSON", factory.bot.calls[2]["message"]
+        )
+        self.assertIn(
+            "请先加载本地 skill：generate-solution-test-cases", factory.bot.calls[3]["message"]
+        )
         self.assertIn('"model": "项目管理"', factory.bot.calls[3]["message"])
-        self.assertIn("请直接返回包含 cases 数组的详细测试用例 JSON", factory.bot.calls[3]["message"])
+        self.assertIn(
+            "请直接返回包含 cases 数组的详细测试用例 JSON", factory.bot.calls[3]["message"]
+        )
         self.assertIn("只保留核心业务场景", factory.bot.calls[3]["message"])
 
-    async def test_run_requirement_analysis_chain_uses_three_skill_names_without_api_constraints(self) -> None:
-        run_requirement_analysis_chain = getattr(runner_module, "run_requirement_analysis_chain", None)
+    async def test_run_requirement_analysis_chain_uses_three_skill_names_without_api_constraints(
+        self,
+    ) -> None:
+        run_requirement_analysis_chain = getattr(
+            runner_module, "run_requirement_analysis_chain", None
+        )
         self.assertIsNotNone(run_requirement_analysis_chain)
         if run_requirement_analysis_chain is None:
             return
 
-        factory = _FakeFactory(["normalized requirement", "first analysis", "analysis:\n  summary: done"])
+        factory = _FakeFactory(
+            ["normalized requirement", "first analysis", "analysis:\n  summary: done"]
+        )
         stage_outputs: list[str] = []
 
         result = await run_requirement_analysis_chain(

@@ -3,7 +3,6 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -11,8 +10,7 @@ if str(SRC_DIR) not in sys.path:
 
 import httpx
 
-from testing_agent_ai_worker.models.task import RepositoryBinding
-from testing_agent_ai_worker.models.task import GitlabCredentials
+from testing_agent_ai_worker.models.task import GitlabCredentials, RepositoryBinding
 from testing_agent_ai_worker.tasks.code_risk_analysis.diff_prep import (
     compute_diffstat,
     is_filtered_diff_file,
@@ -52,8 +50,11 @@ def _credentials(connection_id: str = "conn-gitlab-1", **overrides: Any) -> Gitl
 def _compare_response(*, diff_texts: list[tuple[str, str]] | None = None) -> dict[str, Any]:
     if diff_texts is None:
         diff_texts = [
-            ("src/app.py", "@@ -1,3 +1,4 @@\n-def main():\n+def main() -> None:\n pass\n+ # new line\n"),
-            ("package-lock.json", "@@ -1 +1 @@\n-{\"lock\":0}\n+{\"lock\":1}\n"),
+            (
+                "src/app.py",
+                "@@ -1,3 +1,4 @@\n-def main():\n+def main() -> None:\n pass\n+ # new line\n",
+            ),
+            ("package-lock.json", '@@ -1 +1 @@\n-{"lock":0}\n+{"lock":1}\n'),
             ("dist/bundle.js", "@@ -1 +1 @@\n-a\n+b\n"),
             ("static/logo.png", ""),
         ]
@@ -61,7 +62,14 @@ def _compare_response(*, diff_texts: list[tuple[str, str]] | None = None) -> dic
         "commit": {"id": "def456"},
         "commits": [{"id": "def456"}],
         "diffs": [
-            {"old_path": path, "new_path": path, "new_file": False, "deleted_file": False, "renamed_file": False, "diff": text}
+            {
+                "old_path": path,
+                "new_path": path,
+                "new_file": False,
+                "deleted_file": False,
+                "renamed_file": False,
+                "diff": text,
+            }
             for path, text in diff_texts
         ],
     }
@@ -144,9 +152,7 @@ class GitlabDiffFetcherTests(unittest.TestCase):
         self.assertTrue(any(f"from={GIT_EMPTY_TREE_SHA}" in path for path in seen_paths))
 
     def test_fetch_fails_when_binding_baseline_resolution_error(self) -> None:
-        transport = _RecordingTransport(
-            lambda request: httpx.Response(500, json={})
-        )
+        transport = _RecordingTransport(lambda request: httpx.Response(500, json={}))
 
         with self.assertRaises(GitlabDiffError) as ctx:
             fetch_repo_diffs(
@@ -236,7 +242,11 @@ class DiffPrepTests(unittest.TestCase):
     def test_code_line_containing_binary_word_is_not_filtered(self) -> None:
         self.assertFalse(
             is_filtered_diff_file(
-                {"old_path": "src/config.py", "new_path": "src/config.py", "diff": "+binary = True\n"}
+                {
+                    "old_path": "src/config.py",
+                    "new_path": "src/config.py",
+                    "diff": "+binary = True\n",
+                }
             )
         )
 

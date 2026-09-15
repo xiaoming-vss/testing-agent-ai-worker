@@ -8,9 +8,10 @@ from datetime import datetime
 
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
-from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import RequirementSourceDownloader
+from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import (
+    RequirementSourceDownloader,
+)
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
-
 
 REQUIREMENT_ANALYSIS_INITIAL_STAGE = "extracting_text"
 REQUIREMENT_ANALYSIS_CHECKPOINT_STAGES = {

@@ -10,11 +10,13 @@ from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
-from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
+from testing_agent_ai_worker.nanobot_runtime.paths import (
+    resolve_runtime_paths,
+    resolve_task_workspace,
+)
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import run_skill_step
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.worker.runner import TaskExecutor
-
 
 TEST_REPORT_SKILL_NAME = "advanced-test-report-generator"
 
@@ -123,6 +125,7 @@ class TestReportNanobotExecutor(TaskExecutor):
     @staticmethod
     def _resolve_report_session_key(task: Task) -> str:
         return task.sprint_id.strip()
+
     @staticmethod
     def _resolve_daily_metrics(task: Task) -> dict[str, object]:
         if task.payload.daily_metrics:
@@ -150,5 +153,3 @@ class TestReportNanobotExecutor(TaskExecutor):
                 "reportLength": len(report_text),
             },
         )
-
-

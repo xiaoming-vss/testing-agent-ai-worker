@@ -11,11 +11,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 import httpx
 
-from testing_agent_ai_worker.platform.errors import TaskSourceError
 from testing_agent_ai_worker.models.task import (
     ExistingTestCases,
     GitlabCredentials,
@@ -25,6 +24,7 @@ from testing_agent_ai_worker.models.task import (
     Task,
     TaskPayload,
 )
+from testing_agent_ai_worker.platform.errors import TaskSourceError
 from testing_agent_ai_worker.platform.http_client import PlatformHttpClient
 from testing_agent_ai_worker.platform.schemas import (
     PlatformClaimTask,
@@ -246,7 +246,8 @@ class HttpClaimTaskSource:
                 metadata={
                     "name": snapshot_task.name,
                     "runId": claimed_task.run_id or snapshot_task.run_id,
-                    "generateTaskId": claimed_task.generate_task_id or snapshot_task.generate_task_id,
+                    "generateTaskId": claimed_task.generate_task_id
+                    or snapshot_task.generate_task_id,
                     "projectId": claimed_task.project_id or snapshot_task.project_id,
                     "sprintId": claimed_task.sprint_id or snapshot_task.sprint_id,
                     "requirementId": claimed_task.requirement_id or snapshot_task.requirement_id,
@@ -291,7 +292,3 @@ class HttpClaimTaskSource:
         if source_type in {"text", "txt"}:
             return "text"
         return source_type
-
-
-
-

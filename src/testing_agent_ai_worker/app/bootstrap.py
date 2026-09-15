@@ -18,13 +18,23 @@ from testing_agent_ai_worker.platform.task_source import HttpClaimTaskSource
 from testing_agent_ai_worker.services.result_service import ResultService
 from testing_agent_ai_worker.services.task_service import TaskService
 from testing_agent_ai_worker.tasks.api_case_generate.executor import ApiCaseNanobotExecutor
-from testing_agent_ai_worker.tasks.code_risk_analysis.executor import CodeRiskAnalysisNanobotExecutor
-from testing_agent_ai_worker.tasks.functional_case_generate.executor import FunctionalCaseNanobotExecutor
-from testing_agent_ai_worker.tasks.requirement_analysis.executor import RequirementAnalysisNanobotExecutor
-from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import PlatformRequirementSourceDownloader
+from testing_agent_ai_worker.tasks.code_risk_analysis.executor import (
+    CodeRiskAnalysisNanobotExecutor,
+)
+from testing_agent_ai_worker.tasks.functional_case_generate.executor import (
+    FunctionalCaseNanobotExecutor,
+)
+from testing_agent_ai_worker.tasks.requirement_analysis.executor import (
+    RequirementAnalysisNanobotExecutor,
+)
+from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import (
+    PlatformRequirementSourceDownloader,
+)
 from testing_agent_ai_worker.tasks.test_report_generate.executor import TestReportNanobotExecutor
 from testing_agent_ai_worker.tasks.ui_case_generate.executor import UiCaseNanobotExecutor
-from testing_agent_ai_worker.tasks.ui_case_generate.source_archive import PlatformSourceArchiveDownloader
+from testing_agent_ai_worker.tasks.ui_case_generate.source_archive import (
+    PlatformSourceArchiveDownloader,
+)
 from testing_agent_ai_worker.worker.dispatcher import WorkerTaskDispatcherExecutor
 from testing_agent_ai_worker.worker.lifecycle import WorkerLifecycle
 from testing_agent_ai_worker.worker.loop import run_worker_loop
@@ -158,7 +168,9 @@ def run_worker(
 
     max_concurrent_tasks = max(1, resolved_settings.worker.max_concurrent_tasks)
     free_slots = threading.Semaphore(max_concurrent_tasks)
-    task_pool = ThreadPoolExecutor(max_workers=max_concurrent_tasks, thread_name_prefix="task-worker")
+    task_pool = ThreadPoolExecutor(
+        max_workers=max_concurrent_tasks, thread_name_prefix="task-worker"
+    )
 
     try:
         return run_worker_loop(
@@ -237,4 +249,3 @@ def _run_worker_iteration(
 
     future.add_done_callback(_release_slot)
     return True
-

@@ -4,6 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 
+from tests.unit.tasks.functional_case_generate.fixtures import analysis
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -40,7 +41,7 @@ class _FakeBot:
         self.calls.append((message, session_key))
         call_index = len(self.calls)
         if call_index == 1:
-            return _FakeResult(json.dumps({"Platform_core_functions": ["登录"]}, ensure_ascii=False))
+            return _FakeResult(json.dumps(analysis(), ensure_ascii=False))
         if call_index == 2:
             return _FakeResult(
                 json.dumps(
@@ -48,7 +49,12 @@ class _FakeBot:
                         "categories": [
                             {
                                 "model": "登录",
-                                "data": [{"test_model": "功能场景", "test_points": [{"case_name": "验证登录成功"}]}],
+                                "data": [
+                                    {
+                                        "test_model": "功能场景",
+                                        "test_points": [{"case_name": "验证登录成功"}],
+                                    }
+                                ],
                             }
                         ]
                     },
@@ -69,9 +75,9 @@ class FunctionalChainPromptTests(unittest.TestCase):
             run_functional_chain(
                 source_text="登录后可以查看项目",
                 session_key="task:1",
-                analysis_skill_name="solution-test-point-analyzer",
-                case_name_skill_name="test-case-name-extractor",
-                detailed_case_skill_name="detailed-test-case-generator",
+                analysis_skill_name="analyze-functional-requirements",
+                case_name_skill_name="generate-solution-test-points",
+                detailed_case_skill_name="generate-solution-test-cases",
                 extra_instruction="优先覆盖核心业务链路",
                 from_config=fake_from_config,
             )
@@ -82,13 +88,16 @@ class FunctionalChainPromptTests(unittest.TestCase):
         analysis_message = bot.calls[0][0]
         case_names_message = bot.calls[1][0]
         detailed_cases_message = bot.calls[2][0]
-        self.assertIn("请先加载本地 skill：solution-test-point-analyzer", analysis_message)
+        self.assertIn("请先加载本地 skill：analyze-functional-requirements", analysis_message)
         self.assertIn("优先覆盖核心业务链路", analysis_message)
         self.assertIn(FUNCTIONAL_ANALYSIS_JSON_ONLY_INSTRUCTION, analysis_message)
-        self.assertIn("请先加载本地 skill：test-case-name-extractor", case_names_message)
+        self.assertIn("请先加载本地 skill：generate-solution-test-points", case_names_message)
         self.assertIn(FUNCTIONAL_CASE_NAMES_JSON_ONLY_INSTRUCTION, case_names_message)
-        self.assertIn("请先加载本地 skill：detailed-test-case-generator", detailed_cases_message)
+        self.assertIn("登录后可以查看项目", case_names_message)
+        self.assertIn("functionalOverview", case_names_message)
+        self.assertIn("请先加载本地 skill：generate-solution-test-cases", detailed_cases_message)
         self.assertIn(FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION, detailed_cases_message)
+        self.assertIn("登录后可以查看项目", detailed_cases_message)
 
     def test_run_skill_step_appends_instruction_by_functional_skill_name(self) -> None:
         bot = _FakeBot()
@@ -100,7 +109,7 @@ class FunctionalChainPromptTests(unittest.TestCase):
             run_skill_step(
                 input_text="登录需求",
                 session_key="task:1",
-                skill_name="solution-test-point-analyzer",
+                skill_name="analyze-functional-requirements",
                 extra_instruction="只看功能路径",
                 from_config=fake_from_config,
             )

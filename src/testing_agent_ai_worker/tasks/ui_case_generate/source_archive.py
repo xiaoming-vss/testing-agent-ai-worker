@@ -12,7 +12,9 @@ from testing_agent_ai_worker.platform.http_client import PlatformHttpClient
 
 
 class SourceArchiveDownloader(Protocol):
-    def download_and_extract(self, *, source_archive_download_url: str, task: Task, workspace: Path) -> Path: ...
+    def download_and_extract(
+        self, *, source_archive_download_url: str, task: Task, workspace: Path
+    ) -> Path: ...
 
 
 @dataclass(slots=True)
@@ -48,10 +50,16 @@ class PlatformSourceArchiveDownloader:
             raise ValueError("sourceArchiveDownloadUrl 下载内容不是有效 ZIP") from error
 
         source_extensions = {".html", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte"}
-        if not any(path.is_file() and path.suffix.lower() in source_extensions for path in source_dir.rglob("*")):
+        if not any(
+            path.is_file() and path.suffix.lower() in source_extensions
+            for path in source_dir.rglob("*")
+        ):
             raise ValueError("source archive 解压后不包含可识别的前端源码")
         return source_dir
 
 
 def _safe_path_part(value: str) -> str:
-    return "".join(char if char.isalnum() or char in "._-" else "_" for char in value).strip("._") or "task"
+    return (
+        "".join(char if char.isalnum() or char in "._-" else "_" for char in value).strip("._")
+        or "task"
+    )

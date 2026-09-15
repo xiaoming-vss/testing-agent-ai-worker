@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
-import os
 import sys
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from testing_agent_ai_worker.nanobot.runner import ChainRunResult, run_chain
-
 
 DEFAULT_EXTRACTOR_SKILL_NAME = "openapi-test-config-extractor"
 DEFAULT_GENERATOR_SKILL_NAME = "api-cases-yaml-generator"
@@ -44,7 +43,7 @@ async def run_chain_demo(
 
 def main(
     *,
-    openapi_json_path: str,
+    openapi_json_path: str | None = None,
     session_key: str = "demo:nanobot-chain",
     extractor_skill_name: str = DEFAULT_EXTRACTOR_SKILL_NAME,
     generator_skill_name: str = DEFAULT_GENERATOR_SKILL_NAME,
@@ -52,7 +51,19 @@ def main(
     workspace: str | None = None,
     extra_instruction: str = "",
 ) -> int:
-
+    if openapi_json_path is None:
+        parser = argparse.ArgumentParser(
+            description="Generate API cases from an OpenAPI JSON file."
+        )
+        parser.add_argument("--openapi-json-path", required=True)
+        parser.add_argument("--session-key", default=session_key)
+        parser.add_argument("--extractor-skill-name", default=extractor_skill_name)
+        parser.add_argument("--generator-skill-name", default=generator_skill_name)
+        parser.add_argument("--config-path", default=config_path)
+        parser.add_argument("--workspace", default=workspace)
+        parser.add_argument("--extra-instruction", default=extra_instruction)
+        args = parser.parse_args()
+        return main(**vars(args))
     return asyncio.run(
         run_chain_demo(
             openapi_json_path=openapi_json_path,
@@ -67,4 +78,4 @@ def main(
 
 
 if __name__ == "__main__":
-    sys.exit(main(openapi_json_path=r"D:\ChromeDownloads\demo.json", extra_instruction="生成登录，项目增删改查的用例"))
+    sys.exit(main())

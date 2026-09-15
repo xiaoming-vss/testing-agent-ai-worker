@@ -52,7 +52,9 @@ class TestReportNanobotExecutorTest(unittest.TestCase):
         )
         progresses = []
 
-        result = executor.execute(self._task(daily_metrics=daily_metrics), datetime.now().astimezone(), progresses.append)
+        result = executor.execute(
+            self._task(daily_metrics=daily_metrics), datetime.now().astimezone(), progresses.append
+        )
 
         self.assertEqual(TaskStatus.SUCCESS, result.status)
         self.assertEqual("测试报告正文", result.output_yaml)
@@ -79,5 +81,3 @@ class TestReportNanobotExecutorTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

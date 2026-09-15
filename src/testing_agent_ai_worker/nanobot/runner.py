@@ -19,6 +19,18 @@ from testing_agent_ai_worker.tasks.requirement_analysis.chain import (
     run_requirement_analysis_chain,
 )
 
+__all__ = [
+    "ChainRunResult",
+    "FunctionalChainRunResult",
+    "RequirementAnalysisChainRunResult",
+    "run_chain",
+    "run_demo",
+    "run_functional_chain",
+    "run_functional_detailed_case_batches",
+    "run_requirement_analysis_chain",
+    "run_skill_step",
+]
+
 
 def _default_from_config(**kwargs: Any) -> Any:
     """延迟导入 nanobot，避免单元测试在无 SDK 环境下提前失败。"""

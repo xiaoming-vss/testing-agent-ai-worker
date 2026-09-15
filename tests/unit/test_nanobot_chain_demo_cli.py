@@ -2,7 +2,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-
+from unittest.mock import AsyncMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -23,6 +23,41 @@ class _Printer:
 
 
 class NanobotChainDemoCliTests(unittest.IsolatedAsyncioTestCase):
+    def test_command_line_parses_input_and_options(self) -> None:
+        argv = [
+            "testing-agent-ai-chain-demo",
+            "--openapi-json-path",
+            "spec.json",
+            "--session-key",
+            "demo:cli",
+            "--extra-instruction",
+            "覆盖登录",
+        ]
+        with (
+            patch.object(sys, "argv", argv),
+            patch.object(
+                chain_demo_module,
+                "run_chain_demo",
+                new_callable=AsyncMock,
+                return_value=0,
+            ) as runner,
+        ):
+            self.assertEqual(main(), 0)
+        self.assertEqual(runner.await_args.kwargs["openapi_json_path"], "spec.json")
+        self.assertEqual(runner.await_args.kwargs["session_key"], "demo:cli")
+        self.assertEqual(runner.await_args.kwargs["extra_instruction"], "覆盖登录")
+
+    def test_command_line_requires_input_without_calling_model(self) -> None:
+        with (
+            patch.object(sys, "argv", ["testing-agent-ai-chain-demo"]),
+            patch("sys.stderr"),
+            patch.object(chain_demo_module, "run_chain_demo") as runner,
+        ):
+            with self.assertRaises(SystemExit) as error:
+                main()
+        self.assertEqual(error.exception.code, 2)
+        runner.assert_not_called()
+
     async def test_run_chain_demo_reads_openapi_file_and_prints_two_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             openapi_path = Path(temp_dir) / "openapi.json"

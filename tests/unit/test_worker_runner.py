@@ -1,10 +1,8 @@
 import sys
 import threading
-import time
 import unittest
 from datetime import datetime
 from pathlib import Path
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -209,9 +207,13 @@ class WorkerRunnerTests(unittest.TestCase):
         self.assertEqual(result.error_message, "executor boom")
         self.assertEqual(result.intermediate_json_text, '{"enhancedText":"snapshot text"}')
         self.assertEqual(sink.result_calls[0].status, TaskStatus.ERROR)
-        self.assertEqual(sink.result_calls[0].intermediate_json_text, '{"enhancedText":"snapshot text"}')
+        self.assertEqual(
+            sink.result_calls[0].intermediate_json_text, '{"enhancedText":"snapshot text"}'
+        )
 
-    def test_process_task_preserves_latest_progress_config_when_executor_errors_after_progress(self) -> None:
+    def test_process_task_preserves_latest_progress_config_when_executor_errors_after_progress(
+        self,
+    ) -> None:
         sink = _RecordingSink()
         runner = WorkerRunner(
             executor=_ProgressThenExplodingExecutor(),
@@ -227,7 +229,9 @@ class WorkerRunnerTests(unittest.TestCase):
 
         self.assertEqual(result.status, TaskStatus.ERROR)
         self.assertEqual(result.error_message, "executor boom after progress")
-        self.assertEqual(result.intermediate_json_text, '{"enhancedText":"progress text","caseNames":[]}')
+        self.assertEqual(
+            result.intermediate_json_text, '{"enhancedText":"progress text","caseNames":[]}'
+        )
         self.assertEqual(result.output_yaml, '{"cases":[]}')
         self.assertEqual(result.result_summary_json, '{"status":"running","stage":"case_names"}')
 

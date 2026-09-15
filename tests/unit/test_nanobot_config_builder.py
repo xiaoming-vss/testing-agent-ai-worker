@@ -5,15 +5,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+import testing_agent_ai_worker.nanobot.config_builder as config_builder_module
 from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.task import LlmCredentials, Task, TaskPayload
-import testing_agent_ai_worker.nanobot.config_builder as config_builder_module
 from testing_agent_ai_worker.nanobot.config_builder import task_config_path
 
 
@@ -79,8 +78,12 @@ class NanobotConfigBuilderTests(unittest.TestCase):
 
                     generated_config = json.loads(Path(resolved_path).read_text(encoding="utf-8"))
                     self.assertEqual(generated_config["agents"]["defaults"]["provider"], "auto")
-                    self.assertEqual(generated_config["agents"]["defaults"]["model"], "gpt-5.4-mini")
-                    self.assertEqual(generated_config["providers"]["custom"]["apiKey"], "platform-key")
+                    self.assertEqual(
+                        generated_config["agents"]["defaults"]["model"], "gpt-5.4-mini"
+                    )
+                    self.assertEqual(
+                        generated_config["providers"]["custom"]["apiKey"], "platform-key"
+                    )
                     self.assertEqual(
                         generated_config["providers"]["custom"]["apiBase"],
                         "https://example.test/v1",

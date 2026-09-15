@@ -1,8 +1,8 @@
 """Project metadata and public import naming tests."""
 
-from pathlib import Path
 import tomllib
 import unittest
+from pathlib import Path
 
 
 class ProjectMetadataTests(unittest.TestCase):

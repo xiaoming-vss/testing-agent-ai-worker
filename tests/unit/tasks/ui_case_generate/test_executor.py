@@ -6,7 +6,6 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -16,12 +15,12 @@ from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskStatus
 from testing_agent_ai_worker.models.task import Task, TaskPayload
 from testing_agent_ai_worker.tasks.ui_case_generate.executor import (
-    UI_CASE_YAML_ONLY_INSTRUCTION,
     UiCaseNanobotExecutor,
     _validate_ui_cases_yaml,
 )
-from testing_agent_ai_worker.tasks.ui_case_generate.source_archive import PlatformSourceArchiveDownloader
-
+from testing_agent_ai_worker.tasks.ui_case_generate.source_archive import (
+    PlatformSourceArchiveDownloader,
+)
 
 VALID_YAML = """- name: 登录成功
   enabled: true
@@ -74,10 +73,19 @@ def _zip_bytes(files: dict[str, str]) -> bytes:
 class UiCaseExecutorTests(unittest.TestCase):
     def _task(self, *, source_archive_download_url: str = "/source.zip") -> Task:
         return Task(
-            task_id="ui-task-1", run_id="run-1", generate_task_id="generate-1",
-            task_type="ui_case_generate", project_id="project-1", sprint_id="sprint-1",
+            task_id="ui-task-1",
+            run_id="run-1",
+            generate_task_id="generate-1",
+            task_type="ui_case_generate",
+            project_id="project-1",
+            sprint_id="sprint-1",
             requirement_id="requirement-1",
-            payload=TaskPayload(openapi_content="", source_archive_download_url=source_archive_download_url, source_content="不得传入技能", extra_instruction="覆盖登录流程"),
+            payload=TaskPayload(
+                openapi_content="",
+                source_archive_download_url=source_archive_download_url,
+                source_content="不得传入技能",
+                extra_instruction="覆盖登录流程",
+            ),
         )
 
     def test_execute_downloads_extracts_and_returns_skill_yaml(self) -> None:
@@ -93,8 +101,9 @@ class UiCaseExecutorTests(unittest.TestCase):
             captured.update(kwargs)
             return VALID_YAML
 
+        temp_dir = self.enterContext(tempfile.TemporaryDirectory())
         executor = UiCaseNanobotExecutor(
-            nanobot_config=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
+            nanobot_config=NanobotConfig(runtime_root=temp_dir),
             source_downloader=PlatformSourceArchiveDownloader(Client()),
             skill_runner=fake_skill_runner,
         )
@@ -106,7 +115,9 @@ class UiCaseExecutorTests(unittest.TestCase):
         self.assertIn("sourceRoot", result.intermediate_json_text)
         self.assertIn("登录流程", captured["input_text"])
         self.assertIn("始终返回非空 YAML list", captured["input_text"])
-        self.assertNotIn("步骤必须包含 orderNo、stepName、keyword、operationValue", captured["input_text"])
+        self.assertNotIn(
+            "步骤必须包含 orderNo、stepName、keyword、operationValue", captured["input_text"]
+        )
         self.assertNotIn("不得传入技能", captured["input_text"])
         self.assertEqual(1, len(progress))
         self.assertEqual("ui_case_generating", progress[0].current_stage)
@@ -117,9 +128,13 @@ class UiCaseExecutorTests(unittest.TestCase):
                 raise ValueError("ui_case_generate 缺少 sourceArchiveDownloadUrl")
 
         executor = UiCaseNanobotExecutor(
-            nanobot_config=NanobotConfig(), source_downloader=Downloader(), skill_runner=lambda **kwargs: VALID_YAML,
+            nanobot_config=NanobotConfig(),
+            source_downloader=Downloader(),
+            skill_runner=lambda **kwargs: VALID_YAML,
         )
-        result = executor.execute(self._task(source_archive_download_url=""), datetime.now().astimezone(), lambda _: None)
+        result = executor.execute(
+            self._task(source_archive_download_url=""), datetime.now().astimezone(), lambda _: None
+        )
         self.assertEqual(TaskStatus.FAILED, result.status)
         self.assertIn("sourceArchiveDownloadUrl", result.error_message or "")
 
@@ -129,7 +144,9 @@ class UiCaseExecutorTests(unittest.TestCase):
                 return Path("D:/tmp/source")
 
         executor = UiCaseNanobotExecutor(
-            nanobot_config=NanobotConfig(), source_downloader=Downloader(), skill_runner=lambda **kwargs: "- name: incomplete",
+            nanobot_config=NanobotConfig(),
+            source_downloader=Downloader(),
+            skill_runner=lambda **kwargs: "- name: incomplete",
         )
         result = executor.execute(self._task(), datetime.now().astimezone(), lambda _: None)
         self.assertEqual(TaskStatus.FAILED, result.status)
@@ -162,9 +179,13 @@ class UiCaseExecutorTests(unittest.TestCase):
 
     def test_validator_rejects_unsupported_keyword_and_locator_type(self) -> None:
         with self.assertRaisesRegex(ValueError, "keyword 不受支持"):
-            _validate_ui_cases_yaml(ALL_KEYWORDS_YAML.replace("keyword: reload", "keyword: wait_visible"))
+            _validate_ui_cases_yaml(
+                ALL_KEYWORDS_YAML.replace("keyword: reload", "keyword: wait_visible")
+            )
         with self.assertRaisesRegex(ValueError, "locatorType 不受支持"):
-            _validate_ui_cases_yaml(ALL_KEYWORDS_YAML.replace("locatorType: css", "locatorType: id", 1))
+            _validate_ui_cases_yaml(
+                ALL_KEYWORDS_YAML.replace("locatorType: css", "locatorType: id", 1)
+            )
 
     def test_validator_enforces_locator_rules(self) -> None:
         with self.assertRaisesRegex(ValueError, "locatorType 不受支持或缺失"):
@@ -190,12 +211,12 @@ class UiCaseExecutorTests(unittest.TestCase):
 
     def test_validator_enforces_comparator_rules(self) -> None:
         with self.assertRaisesRegex(ValueError, "comparator 必须是 eq 或 contains"):
-            _validate_ui_cases_yaml(ALL_KEYWORDS_YAML.replace("comparator: contains", "comparator: ne"))
+            _validate_ui_cases_yaml(
+                ALL_KEYWORDS_YAML.replace("comparator: contains", "comparator: ne")
+            )
         with self.assertRaisesRegex(ValueError, "不应包含 comparator"):
             _validate_ui_cases_yaml(
-                ALL_KEYWORDS_YAML.replace(
-                    "keyword: click, ", "keyword: click, comparator: eq, ", 1
-                )
+                ALL_KEYWORDS_YAML.replace("keyword: click, ", "keyword: click, comparator: eq, ", 1)
             )
 
     def test_validator_requires_step_default_fields(self) -> None:
@@ -212,7 +233,9 @@ class UiCaseExecutorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             with self.assertRaisesRegex(ValueError, "unsafe path"):
                 PlatformSourceArchiveDownloader(Client()).download_and_extract(
-                    source_archive_download_url="/source.zip", task=self._task(), workspace=Path(temp_dir)
+                    source_archive_download_url="/source.zip",
+                    task=self._task(),
+                    workspace=Path(temp_dir),
                 )
 
 

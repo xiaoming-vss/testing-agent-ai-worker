@@ -53,5 +53,3 @@ class WorkerTaskDispatcherExecutor(TaskExecutor):
             started_at=started_at,
             finished_at=datetime.now().astimezone(),
         )
-
-

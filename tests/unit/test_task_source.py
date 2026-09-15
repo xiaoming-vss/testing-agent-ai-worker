@@ -3,14 +3,12 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from testing_agent_ai_worker.models.task import Task
-from testing_agent_ai_worker.models.task import TaskPayload
+from testing_agent_ai_worker.models.task import Task, TaskPayload
 from testing_agent_ai_worker.platform.task_source import HttpClaimTaskSource
 from testing_agent_ai_worker.services.task_service import TaskService
 from testing_agent_ai_worker.worker.poller import TaskPoller
@@ -55,12 +53,12 @@ class FakePlatformHttpClient:
                 "sprintId": "sprint-1",
                 "requirementId": "req-1",
                 "sourceType": "openapi",
-                "sourceContent": "{\"openapi\":\"3.0.0\"}",
+                "sourceContent": '{"openapi":"3.0.0"}',
                 "targetScope": "只处理登录与鉴权接口",
                 "instruction": "只提取登录接口",
                 "checkpointEnabled": True,
                 "currentStage": "case_names",
-                "configJson": "{\"enhancedText\":\"审核后文本\"}",
+                "configJson": '{"enhancedText":"审核后文本"}',
             }
         }
 
@@ -86,7 +84,9 @@ class TaskSourceTests(unittest.TestCase):
         payload = TaskPayload(openapi_content="{}")
 
         self.assertEqual(
-            Task(claim_id="claim-1", task_id="task-1", run_id="run-1", payload=payload).nanobot_session_key,
+            Task(
+                claim_id="claim-1", task_id="task-1", run_id="run-1", payload=payload
+            ).nanobot_session_key,
             "run-1",
         )
         self.assertEqual("", payload.source_type)
@@ -134,14 +134,14 @@ class TaskSourceTests(unittest.TestCase):
         self.assertEqual("project-1", task.project_id)
         self.assertEqual("sprint-1", task.sprint_id)
         self.assertEqual("req-1", task.requirement_id)
-        self.assertEqual("{\"openapi\":\"3.0.0\"}", task.payload.openapi_content)
-        self.assertEqual("{\"openapi\":\"3.0.0\"}", task.payload.source_content)
+        self.assertEqual('{"openapi":"3.0.0"}', task.payload.openapi_content)
+        self.assertEqual('{"openapi":"3.0.0"}', task.payload.source_content)
         self.assertEqual("openapi", task.payload.source_type)
         self.assertEqual("只处理登录与鉴权接口", task.payload.target_scope)
         self.assertEqual("只提取登录接口", task.payload.extra_instruction)
         self.assertTrue(task.checkpoint_enabled)
         self.assertEqual("case_names", task.current_stage)
-        self.assertEqual("{\"enhancedText\":\"审核后文本\"}", task.config_json)
+        self.assertEqual('{"enhancedText":"审核后文本"}', task.config_json)
         self.assertEqual("api_case_generate", task.raw["claim"]["taskType"])
         self.assertEqual("OpenAPI 用例生成", task.raw["snapshot"]["run"]["name"])
         self.assertIsNotNone(task.payload.llm_credentials)
@@ -188,7 +188,7 @@ class TaskSourceTests(unittest.TestCase):
                 assert payload is not None
                 payload["checkpointEnabled"] = True
                 payload["currentStage"] = "requirement_analysis"
-                payload["configJson"] = "{\"enhancedText\":\"顶层审核文本\"}"
+                payload["configJson"] = '{"enhancedText":"顶层审核文本"}'
                 payload["run"].pop("checkpointEnabled")
                 payload["run"].pop("currentStage")
                 payload["run"].pop("configJson")
@@ -208,7 +208,7 @@ class TaskSourceTests(unittest.TestCase):
         assert task is not None
         self.assertTrue(task.checkpoint_enabled)
         self.assertEqual("requirement_analysis", task.current_stage)
-        self.assertEqual("{\"enhancedText\":\"顶层审核文本\"}", task.config_json)
+        self.assertEqual('{"enhancedText":"顶层审核文本"}', task.config_json)
 
     def test_poll_task_uses_claim_checkpoint_fields_when_snapshot_omits_them(self) -> None:
         class ClaimCheckpointClient(FakePlatformHttpClient):
@@ -217,7 +217,7 @@ class TaskSourceTests(unittest.TestCase):
                 assert payload is not None
                 payload["checkpointEnabled"] = True
                 payload["currentStage"] = "enhanced_text"
-                payload["configJson"] = "{\"enhancedText\":\"来自 claim\"}"
+                payload["configJson"] = '{"enhancedText":"来自 claim"}'
                 return payload
 
             def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
@@ -242,7 +242,7 @@ class TaskSourceTests(unittest.TestCase):
         assert task is not None
         self.assertTrue(task.checkpoint_enabled)
         self.assertEqual("enhanced_text", task.current_stage)
-        self.assertEqual("{\"enhancedText\":\"来自 claim\"}", task.config_json)
+        self.assertEqual('{"enhancedText":"来自 claim"}', task.config_json)
 
     def test_poll_task_snapshot_false_overrides_claim_checkpoint_true(self) -> None:
         class SnapshotDisablesCheckpointClient(FakePlatformHttpClient):
@@ -341,8 +341,11 @@ class TaskSourceTests(unittest.TestCase):
                 return payload
 
         task = HttpClaimTaskSource(
-            client=UiTaskClient(), claim_path="/claim", snapshot_path_template="/snapshot/{task_id}",
-            llm_credentials_path_template="/credentials/{task_id}", worker_id="worker",
+            client=UiTaskClient(),
+            claim_path="/claim",
+            snapshot_path_template="/snapshot/{task_id}",
+            llm_credentials_path_template="/credentials/{task_id}",
+            worker_id="worker",
         ).poll_task()
 
         self.assertIsNotNone(task)
@@ -441,7 +444,9 @@ class TaskSourceTests(unittest.TestCase):
         self.assertTrue(client.claim_called)
         self.assertTrue(client.snapshot_called)
         self.assertTrue(client.credentials_called)
-        self.assertEqual("/internal/ai-worker/tasks/worker-task-1/llm-credentials", client.last_credentials_path)
+        self.assertEqual(
+            "/internal/ai-worker/tasks/worker-task-1/llm-credentials", client.last_credentials_path
+        )
         self.assertIsNotNone(task)
         assert task is not None
         self.assertEqual("claim-lease-req-1", task.claim_id)
@@ -600,4 +605,3 @@ class TaskSourceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -4,7 +4,6 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
@@ -13,7 +12,9 @@ if str(SRC_DIR) not in sys.path:
 from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task, TaskPayload
-from testing_agent_ai_worker.tasks.requirement_analysis.chain import RequirementAnalysisChainRunResult
+from testing_agent_ai_worker.tasks.requirement_analysis.chain import (
+    RequirementAnalysisChainRunResult,
+)
 from testing_agent_ai_worker.tasks.requirement_analysis.executor import (
     REQUIREMENT_ANALYSIS_FIRST_SKILL_NAME,
     REQUIREMENT_ANALYSIS_SECOND_SKILL_NAME,
@@ -24,11 +25,16 @@ from testing_agent_ai_worker.worker.dispatcher import WorkerTaskDispatcherExecut
 
 
 class FakeSourceDownloader:
-    def __init__(self, saved_path: str = "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx") -> None:
+    def __init__(
+        self,
+        saved_path: str = "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx",
+    ) -> None:
         self.saved_path = Path(saved_path)
         self.calls: list[dict[str, object]] = []
 
-    def download_source(self, *, document_download_url: str, document_type: str, task: Task, workspace: Path) -> Path:
+    def download_source(
+        self, *, document_download_url: str, document_type: str, task: Task, workspace: Path
+    ) -> Path:
         self.calls.append(
             {
                 "document_download_url": document_download_url,
@@ -151,7 +157,9 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
         )
 
     def test_execute_uses_document_download_url_not_source_content_for_download(self) -> None:
-        source_downloader = FakeSourceDownloader("D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx")
+        source_downloader = FakeSourceDownloader(
+            "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx"
+        )
 
         def fake_chain_runner(**kwargs):
             kwargs["on_first_step_result"]("normalized requirement text")
@@ -188,7 +196,9 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
     def test_execute_checkpoint_extracting_text_returns_none_for_review(self) -> None:
         progress_events: list[TaskProgress] = []
         captured: dict[str, object] = {}
-        source_downloader = FakeSourceDownloader("D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx")
+        source_downloader = FakeSourceDownloader(
+            "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx"
+        )
 
         def fake_skill_runner(**kwargs) -> str:
             captured.update(kwargs)
@@ -223,7 +233,9 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
     def test_execute_checkpoint_when_current_stage_is_set_even_if_flag_is_false(self) -> None:
         progress_events: list[TaskProgress] = []
         captured: dict[str, object] = {}
-        source_downloader = FakeSourceDownloader("D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx")
+        source_downloader = FakeSourceDownloader(
+            "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx"
+        )
 
         def fake_skill_runner(**kwargs) -> str:
             captured.update(kwargs)
@@ -252,7 +264,9 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
     def test_execute_checkpoint_defaults_empty_stage_to_extracting_text(self) -> None:
         progress_events: list[TaskProgress] = []
         captured: dict[str, object] = {}
-        source_downloader = FakeSourceDownloader("D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx")
+        source_downloader = FakeSourceDownloader(
+            "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx"
+        )
 
         def fake_skill_runner(**kwargs) -> str:
             captured.update(kwargs)
@@ -503,7 +517,9 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
         executor = RequirementAnalysisNanobotExecutor(
             nanobot_config=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
             chain_runner=fake_chain_runner,
-            source_downloader=FakeSourceDownloader("D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx"),
+            source_downloader=FakeSourceDownloader(
+                "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx"
+            ),
         )
         result = executor.execute(
             self._make_task(document_type="word"),
@@ -523,7 +539,9 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
                 final_output="analysis:\n  summary: docx alias done",
             )
 
-        source_downloader = FakeSourceDownloader("D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx")
+        source_downloader = FakeSourceDownloader(
+            "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.docx"
+        )
         executor = RequirementAnalysisNanobotExecutor(
             nanobot_config=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
             chain_runner=fake_chain_runner,
@@ -539,7 +557,6 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
         self.assertEqual(result.output_yaml, "analysis:\n  summary: docx alias done")
         self.assertEqual(source_downloader.calls[0]["document_type"], "word")
 
-
     def test_execute_accepts_text_document_type(self) -> None:
         def fake_chain_runner(**kwargs):
             kwargs["on_first_step_result"]("txt normalized text")
@@ -552,7 +569,9 @@ class RequirementAnalysisExecutorTests(unittest.TestCase):
         executor = RequirementAnalysisNanobotExecutor(
             nanobot_config=NanobotConfig(runtime_root="D:/tmp/nanobot-runtime"),
             chain_runner=fake_chain_runner,
-            source_downloader=FakeSourceDownloader("D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.txt"),
+            source_downloader=FakeSourceDownloader(
+                "D:/tmp/nanobot-runtime/workspaces/project-project-1/inputs/worker-task-1/source.txt"
+            ),
         )
         result = executor.execute(
             self._make_task(document_type="text"),

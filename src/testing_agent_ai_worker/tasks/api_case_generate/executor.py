@@ -9,7 +9,10 @@ from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
-from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
+from testing_agent_ai_worker.nanobot_runtime.paths import (
+    resolve_runtime_paths,
+    resolve_task_workspace,
+)
 from testing_agent_ai_worker.tasks.api_case_generate.chain import ChainRunResult, run_chain
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.worker.runner import TaskExecutor

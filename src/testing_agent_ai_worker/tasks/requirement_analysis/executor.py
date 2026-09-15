@@ -6,12 +6,16 @@ import asyncio
 import json
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
-from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
+from testing_agent_ai_worker.nanobot_runtime.paths import (
+    resolve_runtime_paths,
+    resolve_task_workspace,
+)
 from testing_agent_ai_worker.tasks.requirement_analysis.chain import (
     RequirementAnalysisChainRunResult,
     run_requirement_analysis_chain,
@@ -22,10 +26,11 @@ from testing_agent_ai_worker.tasks.requirement_analysis.checkpoint import (
     REQUIREMENT_ANALYSIS_INITIAL_STAGE,
     execute_checkpoint_task,
 )
-from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import RequirementSourceDownloader
+from testing_agent_ai_worker.tasks.requirement_analysis.source_downloader import (
+    RequirementSourceDownloader,
+)
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.worker.runner import TaskExecutor
-
 
 REQUIREMENT_ANALYSIS_FIRST_SKILL_NAME = "extract-docx-enhanced-text"
 REQUIREMENT_ANALYSIS_SECOND_SKILL_NAME = "prd-requirement-writing-skill"
@@ -87,7 +92,9 @@ class RequirementAnalysisNanobotExecutor(TaskExecutor):
                 started_at=started_at,
                 finished_at=datetime.now().astimezone(),
             )
-        task.payload.document_type = normalize_requirement_analysis_document_type(task.payload.document_type)
+        task.payload.document_type = normalize_requirement_analysis_document_type(
+            task.payload.document_type
+        )
         if task.payload.document_type not in SUPPORTED_REQUIREMENT_ANALYSIS_DOCUMENT_TYPES:
             return TaskResult(
                 task_id=task.task_id,
@@ -103,7 +110,10 @@ class RequirementAnalysisNanobotExecutor(TaskExecutor):
 
         with task_config_path(nanobot_config=self.nanobot_config, task=task) as config_path:
             checkpoint_stage = task.current_stage.strip()
-            checkpoint_mode = task.checkpoint_enabled or checkpoint_stage in REQUIREMENT_ANALYSIS_CHECKPOINT_STAGES
+            checkpoint_mode = (
+                task.checkpoint_enabled
+                or checkpoint_stage in REQUIREMENT_ANALYSIS_CHECKPOINT_STAGES
+            )
             if task.checkpoint_enabled and not checkpoint_stage:
                 checkpoint_stage = REQUIREMENT_ANALYSIS_INITIAL_STAGE
                 task.current_stage = checkpoint_stage

@@ -15,7 +15,6 @@ from pathlib import Path
 from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.task import Task
 
-
 DEFAULT_RUNTIME_ROOT = Path(__file__).resolve().parents[3] / "runtime" / "nanobot"
 
 
@@ -28,7 +27,9 @@ class NanobotRuntimePaths:
 
 
 def resolve_runtime_paths(nanobot_config: NanobotConfig) -> NanobotRuntimePaths:
-    runtime_root = Path(nanobot_config.runtime_root) if nanobot_config.runtime_root else DEFAULT_RUNTIME_ROOT
+    runtime_root = (
+        Path(nanobot_config.runtime_root) if nanobot_config.runtime_root else DEFAULT_RUNTIME_ROOT
+    )
     return NanobotRuntimePaths(
         runtime_root=runtime_root,
         workspaces_dir=runtime_root / "workspaces",

@@ -12,6 +12,8 @@ from testing_agent_ai_worker.nanobot_runtime.prompt import (
     build_skill_message,
 )
 
+from .validation import generate_validated, normalize_json
+
 
 def _default_from_config(**kwargs: Any) -> Any:
     """延迟导入 nanobot，避免单元测试在无 SDK 环境下提前失败。"""
@@ -25,11 +27,14 @@ def _build_functional_detailed_case_body(
     *,
     requirement_analysis_json: str,
     case_names_json: str,
+    source_text: str = "",
 ) -> str:
     """为 detailed cases skill 构造固定输入骨架。"""
 
     return "\n\n".join(
         [
+            "【原始需求】",
+            source_text.strip(),
             "【需求分析/测试点 JSON】",
             requirement_analysis_json.strip(),
             "【测试用例名称 JSON】",
@@ -41,21 +46,15 @@ def _build_functional_detailed_case_body(
 def _build_functional_detailed_case_instruction(extra_instruction: str) -> str:
     """为 detailed cases 追加 JSON-only 约束。"""
 
-    return append_stage_instruction(extra_instruction, FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION)
+    return append_stage_instruction(
+        extra_instruction, FUNCTIONAL_DETAILED_CASES_JSON_ONLY_INSTRUCTION
+    )
 
 
 def _normalize_json_text(raw_json_text: str) -> str:
     """移除模型可能返回的 markdown fence，保留纯 JSON 文本。"""
 
-    normalized = raw_json_text.strip()
-    if normalized.startswith("```"):
-        lines = normalized.splitlines()
-        if lines:
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        normalized = "\n".join(lines).strip()
-    return normalized
+    return normalize_json(raw_json_text)
 
 
 def _build_model_batches(case_names_json: str) -> list[dict[str, Any]]:
@@ -110,30 +109,75 @@ async def run_functional_detailed_case_batches(
     extra_instruction: str = "",
     on_progress: Callable[[str, str, int, int], None] | None = None,
     from_config: Callable[..., Any] | None = None,
+    current_cases_json: str = "",
+    revision_instruction: str = "",
+    source_text: str = "",
 ) -> str:
     """执行 detailed cases 的分片生成并合并结果。"""
 
     factory = from_config or _default_from_config
     merged_cases: list[Any] = []
     batches = _build_model_batches(case_names_json)
+    current_cases = []
+    if revision_instruction:
+        current_cases = _extract_cases(current_cases_json, "当前候选结果")
+        # Edited candidates may contain modules absent from the original test points.
+        known_modules = {batch["model_name"] for batch in batches}
+        for case in current_cases:
+            module = (
+                str(case.get("case_module") or case.get("module") or "未分组").strip() or "未分组"
+            )
+            if module not in known_modules:
+                batches.append(
+                    {
+                        "model_name": module,
+                        "payload": {"categories": [{"model": module, "data": []}]},
+                    }
+                )
+                known_modules.add(module)
 
     async with factory(config_path=config_path, workspace=workspace) as bot:
         for index, batch in enumerate(batches, 1):
-            detailed_cases_result = await bot.run(
-                build_skill_message(
-                    skill_name=skill_name,
-                    body_text=_build_functional_detailed_case_body(
-                        requirement_analysis_json=requirement_analysis_json,
-                        case_names_json=json.dumps(batch["payload"], ensure_ascii=False),
-                    ),
-                    extra_instruction=_build_functional_detailed_case_instruction(extra_instruction),
-                ),
-                session_key=session_key,
+            body = _build_functional_detailed_case_body(
+                source_text=source_text,
+                requirement_analysis_json=requirement_analysis_json,
+                case_names_json=json.dumps(batch["payload"], ensure_ascii=False),
             )
-            merged_cases.extend(_extract_cases(detailed_cases_result.content, batch["model_name"]))
+            if revision_instruction:
+                module_cases = [
+                    case
+                    for case in current_cases
+                    if (
+                        str(case.get("case_module") or case.get("module") or "未分组").strip()
+                        or "未分组"
+                    )
+                    == batch["model_name"]
+                ]
+                body += (
+                    "\n\n【当前模块候选用例】\n"
+                    + json.dumps({"cases": module_cases}, ensure_ascii=False)
+                    + "\n\n【本轮优化要求】\n"
+                    + revision_instruction
+                    + "\n请保留未涉及修改的用例，输出当前模块优化后的完整用例集合。"
+                )
+            detailed_cases_result = await generate_validated(
+                stage="detailed_cases",
+                module=batch["model_name"],
+                batch=index,
+                previous_cases=merged_cases,
+                generate=lambda prompt: bot.run(prompt, session_key=session_key),
+                inputs=build_skill_message(
+                    skill_name=skill_name,
+                    body_text=body,
+                    extra_instruction=_build_functional_detailed_case_instruction(
+                        extra_instruction
+                    ),
+                ),
+            )
+            merged_cases.extend(_extract_cases(detailed_cases_result, batch["model_name"]))
             if on_progress is not None:
                 on_progress(
-                    json.dumps({"cases": merged_cases}, ensure_ascii=False),
+                    "",
                     batch["model_name"],
                     index,
                     len(batches),

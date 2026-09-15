@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime
+from uuid import uuid4
 
 from testing_agent_ai_worker.config.models import NanobotConfig
-from testing_agent_ai_worker.models.execution import TaskResult, TaskStatus
+from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
-from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
+from testing_agent_ai_worker.nanobot_runtime.paths import (
+    resolve_runtime_paths,
+    resolve_task_workspace,
+)
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import (
     FunctionalChainRunResult,
     run_functional_chain,
@@ -30,6 +35,7 @@ from testing_agent_ai_worker.tasks.functional_case_generate.summary import (
 )
 from testing_agent_ai_worker.worker.runner import TaskExecutor
 
+from .validation import ValidationContext, context
 
 SUPPORTED_FUNCTIONAL_SOURCE_TYPES = {"text", "word"}
 LOGGER = logging.getLogger("testing_agent_ai_worker")
@@ -77,6 +83,35 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
         self.detailed_batch_runner = detailed_batch_runner
 
     def execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult | None:
+        workspace = resolve_task_workspace(self.nanobot_config, task)
+
+        def report(event):
+            progress_callback(
+                TaskProgress(
+                    task_id=task.task_id,
+                    run_id=task.run_id,
+                    current_stage=event["stage"],
+                    stage_status="running",
+                    result_summary_json=json.dumps({"outputValidation": event}, ensure_ascii=False),
+                )
+            )
+
+        token = context.set(
+            ValidationContext(
+                diagnostic_dir=workspace
+                / "diagnostics"
+                / "functional-output"
+                / str(task.run_id)
+                / uuid4().hex,
+                report=report,
+            )
+        )
+        try:
+            return self._execute(task, started_at, progress_callback)
+        finally:
+            context.reset(token)
+
+    def _execute(self, task: Task, started_at: datetime, progress_callback) -> TaskResult | None:
         """执行功能测试任务主入口。"""
 
         if task.task_type != "functional_case_generate":
@@ -106,7 +141,10 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
         with task_config_path(nanobot_config=self.nanobot_config, task=task) as config_path:
             self._log_execution_context(task, config_path=config_path, workspace=workspace)
             # checkpoint 模式优先从平台下发的 currentStage/configJson 恢复。
-            if task.checkpoint_enabled:
+            if task.checkpoint_enabled or (
+                task.current_stage == "detailed_cases"
+                and json.loads(task.config_json or "{}").get("revisionInstruction")
+            ):
                 return execute_checkpoint_task(
                     task=task,
                     started_at=started_at,
@@ -124,20 +162,44 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
                 "case_names_json": "",
             }
 
+            resume = {}
+            if task.current_stage in {"case_names", "detailed_cases"}:
+                config = json.loads(task.config_json or "{}")
+
+                def text_field(key):
+                    value = config.get(key)
+                    return (
+                        value
+                        if isinstance(value, str)
+                        else json.dumps(value, ensure_ascii=False)
+                        if value is not None
+                        else ""
+                    )
+
+                resume = {
+                    "resume_stage": task.current_stage,
+                    "prior_analysis": text_field("requirementAnalysis"),
+                    "prior_case_names": text_field("caseNames"),
+                }
+                stage_state["requirement_analysis_json"] = resume["prior_analysis"]
+                stage_state["case_names_json"] = resume["prior_case_names"]
             result = self.chain_runner(
+                **resume,
                 source_text=source_text,
                 session_key=task.nanobot_session_key,
-                analysis_skill_name="solution-test-point-analyzer",
-                case_name_skill_name="test-case-name-extractor",
-                detailed_case_skill_name="detailed-test-case-generator",
+                analysis_skill_name="analyze-functional-requirements",
+                case_name_skill_name="generate-solution-test-points",
+                detailed_case_skill_name="generate-solution-test-cases",
                 config_path=config_path,
                 workspace=str(workspace),
                 extra_instruction=task.payload.extra_instruction,
-                on_requirement_analysis_result=lambda requirement_analysis_output: self._report_requirement_analysis(
-                    task,
-                    progress_callback,
-                    stage_state,
-                    requirement_analysis_output,
+                on_requirement_analysis_result=lambda requirement_analysis_output: (
+                    self._report_requirement_analysis(
+                        task,
+                        progress_callback,
+                        stage_state,
+                        requirement_analysis_output,
+                    )
                 ),
                 on_case_names_result=lambda case_names_output: self._report_case_names(
                     task,
@@ -145,14 +207,16 @@ class FunctionalCaseNanobotExecutor(TaskExecutor):
                     stage_state,
                     case_names_output,
                 ),
-                on_detailed_cases_progress=lambda accumulated_result, _model_name, _index, _total: progress_callback(
-                    build_progress(
-                        task,
-                        current_stage="detailed_cases",
-                        stage_status="running",
-                        requirement_analysis_json=stage_state["requirement_analysis_json"],
-                        case_names_json=stage_state["case_names_json"],
-                        detailed_cases_json=accumulated_result,
+                on_detailed_cases_progress=lambda accumulated_result, _model_name, _index, _total: (
+                    progress_callback(
+                        build_progress(
+                            task,
+                            current_stage="detailed_cases",
+                            stage_status="running",
+                            requirement_analysis_json=stage_state["requirement_analysis_json"],
+                            case_names_json=stage_state["case_names_json"],
+                            detailed_cases_json=accumulated_result,
+                        )
                     )
                 ),
             )

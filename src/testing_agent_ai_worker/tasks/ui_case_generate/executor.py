@@ -15,12 +15,14 @@ from testing_agent_ai_worker.config.models import NanobotConfig
 from testing_agent_ai_worker.models.execution import TaskProgress, TaskResult, TaskStatus
 from testing_agent_ai_worker.models.task import Task
 from testing_agent_ai_worker.nanobot_runtime.config_builder import task_config_path
-from testing_agent_ai_worker.nanobot_runtime.paths import resolve_runtime_paths, resolve_task_workspace
+from testing_agent_ai_worker.nanobot_runtime.paths import (
+    resolve_runtime_paths,
+    resolve_task_workspace,
+)
 from testing_agent_ai_worker.tasks.functional_case_generate.chain import run_skill_step
 from testing_agent_ai_worker.tasks.result_summary import build_task_result_summary
 from testing_agent_ai_worker.tasks.ui_case_generate.source_archive import SourceArchiveDownloader
 from testing_agent_ai_worker.worker.runner import TaskExecutor
-
 
 UI_CASE_SKILL_NAME = "generate-ui-test-case"
 UI_CASE_YAML_ONLY_INSTRUCTION = """请分析指定的前端源码目录并生成 UI 自动化测试用例。
@@ -131,7 +133,8 @@ class UiCaseNanobotExecutor(TaskExecutor):
                 ),
                 output_yaml=output_yaml,
                 result_summary_json=self._summary(task, "success", case_count, None),
-                started_at=started_at, finished_at=datetime.now().astimezone(),
+                started_at=started_at,
+                finished_at=datetime.now().astimezone(),
             )
         except (OSError, ValueError, yaml.YAMLError) as error:
             return self._failure(task, started_at, str(error))
